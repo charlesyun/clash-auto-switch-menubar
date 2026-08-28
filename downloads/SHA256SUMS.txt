@@ -1,1 +1,1 @@
-1b954cc6a064b40214a80cf6ecee38e911c3fced7307b6678ae0f4ba78d91dc9  Clash-Verge-Auto-Switch-macOS-arm64.zip
+3a6a5173d95a4d90aa5f80e3e14c8259e33ffd98560b82333fd706ebf24ed773  Clash-Verge-Auto-Switch-macOS-arm64.zip

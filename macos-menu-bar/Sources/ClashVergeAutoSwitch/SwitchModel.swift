@@ -129,8 +129,11 @@ final class SwitchModel: ObservableObject {
         nextRunText = Self.timeFormatter.string(from: nextRun)
 
         autoSwitchTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.runAutoSwitch()
+            guard let model = self else {
+                return
+            }
+            Task { @MainActor [model] in
+                model.runAutoSwitch()
             }
         }
     }
@@ -188,8 +191,11 @@ final class SwitchModel: ObservableObject {
                 arguments: [scriptPath.path] + arguments,
                 workingDirectory: projectRoot,
                 onOutput: { [weak self] text in
-                    Task { @MainActor in
-                        self?.appendLog(text)
+                    guard let model = self else {
+                        return
+                    }
+                    Task { @MainActor [model] in
+                        model.appendLog(text)
                     }
                 }
             )
