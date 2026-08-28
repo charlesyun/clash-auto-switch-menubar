@@ -1,3 +1,6 @@
 .DS_Store
+__pycache__/
+*.py[cod]
 macos-menu-bar/.build/
 macos-menu-bar/build/
+macos-menu-bar/.swiftpm/

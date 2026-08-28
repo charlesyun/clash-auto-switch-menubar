@@ -10,6 +10,12 @@ CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 ICONSET_DIR="$APP_PROJECT_DIR/build/AppIcon.iconset"
+APP_VERSION="$(tr -d '[:space:]' < "$ROOT_DIR/VERSION")"
+
+if [[ ! "$APP_VERSION" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]]; then
+  echo "Invalid VERSION: $APP_VERSION" >&2
+  exit 1
+fi
 
 cd "$APP_PROJECT_DIR"
 swift build -c release
@@ -171,7 +177,7 @@ cp "$ROOT_DIR/scripts/switch_fastest.py" "$RESOURCES_DIR/scripts/switch_fastest.
 cp "$ROOT_DIR/references/runtime-notes.md" "$RESOURCES_DIR/references/runtime-notes.md"
 chmod +x "$MACOS_DIR/ClashVergeAutoSwitch" "$RESOURCES_DIR/scripts/switch_fastest.py"
 
-cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
+cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -187,7 +193,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>$APP_VERSION</string>
   <key>CFBundleVersion</key>
   <string>1</string>
   <key>LSMinimumSystemVersion</key>
@@ -199,5 +205,8 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+
+/usr/bin/codesign --force --deep --sign - "$APP_DIR"
+/usr/bin/codesign --verify --deep --strict --verbose=2 "$APP_DIR"
 
 echo "Built: $APP_DIR"

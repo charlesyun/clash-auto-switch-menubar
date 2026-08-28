@@ -20,6 +20,13 @@ When `--group` is not provided, the script discovers target groups from the live
 
 This keeps the skill generic across different subscriptions and naming schemes.
 
+## Measurement And Switching
+
+- Candidate delay requests use bounded concurrency (`5` by default, maximum `10`).
+- A different winner is selected only when it beats the measured current node by the configured threshold (`50ms` by default).
+- If the current node cannot be measured, the fastest healthy candidate may still be selected.
+- After a PUT request, the script reads the selector back and treats a mismatch as a failed switch.
+
 ## Scheduling
 
 The bundled `launchd` installer requires `--interval-minutes N`, so the user chooses the execution interval at install time instead of inheriting a fixed 30-minute schedule.

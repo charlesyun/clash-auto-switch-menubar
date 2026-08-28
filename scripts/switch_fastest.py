@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import os
 import re
@@ -16,6 +17,9 @@ from typing import Optional
 
 DEFAULT_DELAY_URL = "http://1.1.1.1"
 DEFAULT_TIMEOUT_MS = 5000
+DEFAULT_CONCURRENCY = 5
+DEFAULT_SWITCH_THRESHOLD_MS = 50
+MAX_CONCURRENCY = 10
 IGNORE_NAMES = {"DIRECT", "REJECT", "PASS", "COMPATIBLE"}
 EXPANDABLE_TYPES = {"urltest", "fallback", "loadbalance"}
 SELECTOR_TYPES = {"selector"}
@@ -54,7 +58,14 @@ def maybe_launch_clash_verge(wait_seconds: int) -> None:
         ["open", "-g", "-a", "Clash Verge Rev"],
     ]
     for command in commands:
-        subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        result = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            break
     if wait_seconds > 0:
         time.sleep(wait_seconds)
 
@@ -73,7 +84,7 @@ def build_candidates(args: argparse.Namespace) -> list[dict[str, str]]:
 
     env_socket = os.environ.get("CLASH_API_UNIX_SOCKET")
     env_url = os.environ.get("CLASH_API_URL")
-    env_secret = os.environ.get("CLASH_API_SECRET", "")
+    env_secret = args.secret if args.secret is not None else os.environ.get("CLASH_API_SECRET", "")
     if env_socket:
         candidates.append({"kind": "unix", "address": env_socket, "secret": env_secret})
     if env_url:
@@ -81,7 +92,11 @@ def build_candidates(args: argparse.Namespace) -> list[dict[str, str]]:
 
     config_socket = read_simple_yaml_value(config_paths, "external-controller-unix")
     config_url = read_simple_yaml_value(config_paths, "external-controller")
-    config_secret = read_simple_yaml_value(config_paths, "secret") or ""
+    config_secret = (
+        args.secret
+        if args.secret is not None
+        else read_simple_yaml_value(config_paths, "secret") or ""
+    )
     if config_socket:
         candidates.append({"kind": "unix", "address": config_socket, "secret": config_secret})
     if config_url:
@@ -106,8 +121,16 @@ def build_candidates(args: argparse.Namespace) -> list[dict[str, str]]:
     return deduped
 
 
-def run_curl(command: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(command, capture_output=True, text=True, check=False)
+def run_curl(
+    command: list[str], stdin_text: Optional[str] = None
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        command,
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 def api_request(
@@ -126,8 +149,14 @@ def api_request(
         base = controller["address"].rstrip("/")
         url = f"{base}{path}"
 
+    header_input = None
     if controller.get("secret"):
-        command.extend(["-H", f"Authorization: Bearer {controller['secret']}"])
+        if "\r" in controller["secret"] or "\n" in controller["secret"]:
+            raise RuntimeError("Controller secret contains invalid newline characters.")
+        # Read the sensitive header from stdin so the token is not exposed in
+        # the curl process arguments shown by tools such as ps.
+        command.extend(["--header", "@-"])
+        header_input = f"Authorization: Bearer {controller['secret']}\n"
     if body is not None:
         command.extend(["-H", "Content-Type: application/json", "--data", json.dumps(body)])
     if query:
@@ -136,7 +165,7 @@ def api_request(
             command.extend(["--data-urlencode", f"{key}={value}"])
     command.extend(["-X", method.upper(), url])
 
-    result = run_curl(command)
+    result = run_curl(command, stdin_text=header_input)
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
         raise RuntimeError(detail or f"curl failed with exit code {result.returncode}")
@@ -268,23 +297,13 @@ def follow_selected_chain(
 def list_current_selector_groups(
     proxies: dict[str, dict[str, object]]
 ) -> list[str]:
-    roots: list[str] = []
-
     if "GLOBAL" in proxies:
-        roots.append("GLOBAL")
-
-    for parent_name, entry in proxies.items():
-        parent_type = normalize_type(entry)
-        if parent_name != "GLOBAL" and parent_type not in SELECTOR_TYPES.union(EXPANDABLE_TYPES):
-            continue
-        selected_name = str((entry or {}).get("now") or "").strip()
-        if not selected_name or selected_name not in proxies:
-            continue
-        if normalize_type(proxies.get(selected_name)) in SELECTOR_TYPES:
-            roots.append(selected_name)
+        groups = follow_selected_chain("GLOBAL", proxies)
+        if groups:
+            return groups
 
     groups: list[str] = []
-    for root in unique_preserving_order(roots):
+    for root in list_top_level_selector_groups(proxies):
         groups.extend(follow_selected_chain(root, proxies))
 
     groups = unique_preserving_order(groups)
@@ -368,6 +387,38 @@ def measure_delay(
     return None
 
 
+def measure_candidates(
+    controller: dict[str, str],
+    candidates: list[str],
+    url: str,
+    timeout_ms: int,
+    concurrency: int,
+) -> list[tuple[Optional[int], str]]:
+    def measure(proxy_name: str) -> tuple[Optional[int], str]:
+        try:
+            return measure_delay(controller, proxy_name, url, timeout_ms), proxy_name
+        except RuntimeError:
+            return None, proxy_name
+
+    worker_count = min(max(concurrency, 1), len(candidates))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+        return list(executor.map(measure, candidates))
+
+
+def switch_improvement_ms(
+    current_name: str,
+    winner_name: str,
+    delays: dict[str, int],
+) -> Optional[int]:
+    if not current_name or current_name == winner_name:
+        return None
+    current_delay = delays.get(current_name)
+    winner_delay = delays.get(winner_name)
+    if current_delay is None or winner_delay is None:
+        return None
+    return current_delay - winner_delay
+
+
 def select_proxy(
     controller: dict[str, str], group_name: str, proxy_name: str
 ) -> None:
@@ -377,6 +428,39 @@ def select_proxy(
         f"/proxies/{urllib.parse.quote(group_name, safe='')}",
         body={"name": proxy_name},
     )
+
+
+def selected_proxy(controller: dict[str, str], group_name: str) -> Optional[str]:
+    response = api_request(
+        controller,
+        "GET",
+        f"/proxies/{urllib.parse.quote(group_name, safe='')}",
+    )
+    if not isinstance(response, dict):
+        return None
+    selected = str(response.get("now") or "").strip()
+    return selected or None
+
+
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+
+def concurrency_value(value: str) -> int:
+    parsed = positive_int(value)
+    if parsed > MAX_CONCURRENCY:
+        raise argparse.ArgumentTypeError(f"must be between 1 and {MAX_CONCURRENCY}")
+    return parsed
+
+
+def non_negative_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be zero or a positive integer")
+    return parsed
 
 
 def main() -> int:
@@ -394,7 +478,24 @@ def main() -> int:
         help="How to auto-discover target groups when --group is not provided",
     )
     parser.add_argument("--delay-url", default=DEFAULT_DELAY_URL, help="URL used for delay testing")
-    parser.add_argument("--timeout-ms", type=int, default=DEFAULT_TIMEOUT_MS, help="Delay test timeout in milliseconds")
+    parser.add_argument(
+        "--timeout-ms",
+        type=positive_int,
+        default=DEFAULT_TIMEOUT_MS,
+        help="Delay test timeout in milliseconds",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=concurrency_value,
+        default=DEFAULT_CONCURRENCY,
+        help=f"Concurrent delay tests (1-{MAX_CONCURRENCY})",
+    )
+    parser.add_argument(
+        "--switch-threshold-ms",
+        type=non_negative_int,
+        default=DEFAULT_SWITCH_THRESHOLD_MS,
+        help="Minimum measured improvement required before switching",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Measure and report only; do not switch groups")
     parser.add_argument("--list-groups", action="store_true", help="Print discovered target groups and exit")
     parser.add_argument(
@@ -409,7 +510,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--launch-wait",
-        type=int,
+        type=non_negative_int,
         default=8,
         help="Seconds to wait after attempting to launch Clash Verge",
     )
@@ -421,7 +522,13 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
-    version = api_request(controller, "GET", "/version")
+    try:
+        version = api_request(controller, "GET", "/version")
+        payload = api_request(controller, "GET", "/proxies")
+    except RuntimeError as exc:
+        print(f"Controller request failed: {exc}", file=sys.stderr)
+        return 3
+
     if isinstance(version, dict):
         log(
             "Connected to controller via "
@@ -430,7 +537,6 @@ def main() -> int:
     else:
         log(f"Connected to controller via {controller['kind']}")
 
-    payload = api_request(controller, "GET", "/proxies")
     if not isinstance(payload, dict) or not isinstance(payload.get("proxies"), dict):
         print("Unexpected /proxies response from controller.", file=sys.stderr)
         return 3
@@ -464,11 +570,14 @@ def main() -> int:
 
         log(f"{group_name}: testing {len(candidates)} candidate(s)...")
         results: list[tuple[int, str]] = []
-        for candidate in candidates:
-            try:
-                delay = measure_delay(controller, candidate, args.delay_url, args.timeout_ms)
-            except RuntimeError:
-                delay = None
+        measured = measure_candidates(
+            controller,
+            candidates,
+            args.delay_url,
+            args.timeout_ms,
+            args.concurrency,
+        )
+        for delay, candidate in measured:
             if delay is not None:
                 log(f"{group_name}: {candidate} -> {delay} ms")
                 results.append((delay, candidate))
@@ -497,10 +606,28 @@ def main() -> int:
             overall_success = True
             continue
 
+        delays = {proxy_name: delay for delay, proxy_name in results}
+        improvement = switch_improvement_ms(current_name, winner_name, delays)
+        if improvement is not None and improvement < args.switch_threshold_ms:
+            log(
+                f"{group_name}: keeping {current_name}; {winner_name} is only "
+                f"{improvement} ms faster (threshold: {args.switch_threshold_ms} ms)."
+            )
+            overall_success = True
+            continue
+
         try:
             select_proxy(controller, group_name, winner_name)
+            verified_name = selected_proxy(controller, group_name)
         except RuntimeError as exc:
             log(f"{group_name}: failed to switch to {winner_name}: {exc}")
+            continue
+
+        if verified_name != winner_name:
+            log(
+                f"{group_name}: switch verification failed; controller reports "
+                f"{verified_name or 'unknown'} instead of {winner_name}."
+            )
             continue
 
         log(

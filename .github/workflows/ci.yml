@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run Python unit tests
+        run: /usr/bin/python3 -m unittest discover -s tests -v
+
+      - name: Check shell syntax
+        run: |
+          /bin/zsh -n scripts/install_launch_agent.sh
+          /bin/zsh -n scripts/uninstall_launch_agent.sh
+          /bin/zsh -n macos-menu-bar/scripts/build_app.sh
+          /bin/zsh -n macos-menu-bar/scripts/package_release.sh
+
+      - name: Build Swift menu bar app
+        working-directory: macos-menu-bar
+        run: swift build

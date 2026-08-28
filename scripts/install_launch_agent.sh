@@ -18,6 +18,8 @@ LOG_DIR="$HOME/Library/Logs"
 OUT_LOG="$LOG_DIR/clash-verge-auto-switch.log"
 ERR_LOG="$LOG_DIR/clash-verge-auto-switch.err.log"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+INSTALL_ROOT="$HOME/Library/Application Support/ClashVergeAutoSwitch"
+INSTALLED_SCRIPT="$INSTALL_ROOT/switch_fastest.py"
 PYTHON_BIN="${PYTHON_BIN:-/usr/bin/python3}"
 INTERVAL_MINUTES=""
 SCRIPT_ARGS=()
@@ -51,13 +53,15 @@ fi
 
 INTERVAL_SECONDS=$((INTERVAL_MINUTES * 60))
 
-mkdir -p "$HOME/Library/LaunchAgents" "$LOG_DIR"
+mkdir -p "$HOME/Library/LaunchAgents" "$LOG_DIR" "$INSTALL_ROOT"
+cp "$SCRIPT_DIR/switch_fastest.py" "$INSTALLED_SCRIPT"
+chmod 700 "$INSTALLED_SCRIPT"
 
-"$PYTHON_BIN" - "$PLIST_PATH" "$OUT_LOG" "$ERR_LOG" "$INTERVAL_SECONDS" "$PYTHON_BIN" "$SCRIPT_DIR/switch_fastest.py" "${SCRIPT_ARGS[@]}" <<'PY'
+"$PYTHON_BIN" - "$PLIST_PATH" "$OUT_LOG" "$ERR_LOG" "$INTERVAL_SECONDS" "$INSTALL_ROOT" "$PYTHON_BIN" "$INSTALLED_SCRIPT" "${SCRIPT_ARGS[@]}" <<'PY'
 import plistlib
 import sys
 
-plist_path, out_log, err_log, interval_seconds, *program_arguments = sys.argv[1:]
+plist_path, out_log, err_log, interval_seconds, working_directory, *program_arguments = sys.argv[1:]
 payload = {
     "Label": "com.codex.clash-verge-auto-switch",
     "ProgramArguments": program_arguments,
@@ -65,12 +69,13 @@ payload = {
     "StartInterval": int(interval_seconds),
     "StandardOutPath": out_log,
     "StandardErrorPath": err_log,
-    "WorkingDirectory": "/tmp",
+    "WorkingDirectory": working_directory,
 }
 
 with open(plist_path, "wb") as handle:
     plistlib.dump(payload, handle)
 PY
+chmod 600 "$PLIST_PATH"
 
 launchctl bootout "gui/$(id -u)" "$PLIST_PATH" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
@@ -80,5 +85,6 @@ launchctl kickstart -k "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 echo "Installed $LABEL"
 echo "Interval: ${INTERVAL_MINUTES} minute(s)"
 echo "Plist: $PLIST_PATH"
+echo "Script: $INSTALLED_SCRIPT"
 echo "Stdout: $OUT_LOG"
 echo "Stderr: $ERR_LOG"

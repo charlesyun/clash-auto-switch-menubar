@@ -49,8 +49,9 @@ Dry-run without changing selections:
 1. Check whether the Mihomo controller is reachable.
 2. If the user did not name target groups, inspect the live `/proxies` tree and auto-discover groups from the current active selection chain.
 3. Expand `url-test`, `fallback`, and `load-balance` groups into leaf proxies, but do not rewrite nested selector groups unless the user explicitly targets them.
-4. Test candidate proxies with the controller delay API and switch the selector group to the lowest-latency healthy node.
-5. Report the winning node, measured latency, and whether a switch happened.
+4. Test candidate proxies concurrently with the controller delay API.
+5. Switch only when the winner meets the configured improvement threshold, then verify the controller selection.
+6. Report the winning node, measured latency, and whether a switch happened.
 
 ## Group Discovery
 
@@ -58,6 +59,8 @@ Dry-run without changing selections:
 - Use `--group-scope top-level` when you want all top-level selector groups discovered from the current controller session.
 - Use `--group-scope all` when you want every selector group in the current Clash instance.
 - Use explicit `--group` flags when the user wants exact control.
+
+The default concurrency is `5` and can be changed with `--concurrency 1..10`. The default switch threshold is `50ms`; use `--switch-threshold-ms 0` to always select the measured winner.
 
 ## Scheduling
 

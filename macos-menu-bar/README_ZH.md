@@ -7,8 +7,12 @@
 ## 功能
 
 - Dry Run 测速，不切换节点
+- 默认 5 路并发测速
 - 一键切换当前链路 selector 组到最快节点
-- 定时自动测速并切换最快节点
+- 新节点至少快于当前节点 50ms 才切换，阈值可配置
+- 切换后回读控制器确认结果
+- 首次启动默认开启自动切换，30 分钟后首次执行
+- 保存自动切换开关、间隔和阈值
 - Controller 离线时自动尝试打开 Clash Verge Rev
 - 日志窗口实时显示候选节点测速、最快节点和切换结果
 
@@ -28,7 +32,7 @@ Clash Verge Auto Switch.app
 
 可以直接运行，也可以拖到 `/Applications`。
 
-当前 App 未做 Apple Developer ID 签名和公证。首次打开如果 macOS 提示无法验证开发者，请在 Finder 里右键 App，选择“打开”。
+当前 App 使用 ad-hoc 签名，但未做 Apple Developer ID 签名和公证。首次打开如果 macOS 提示无法验证开发者，请在 Finder 里右键 App，选择“打开”。
 
 ## 构建
 
@@ -57,7 +61,7 @@ build/Clash Verge Auto Switch.app
 build/release/Clash-Verge-Auto-Switch-macOS-arm64.zip
 ```
 
-该 zip 也会同步到仓库 `downloads/` 目录，作为当前版本的直接下载入口。
+打包命令每次都会重新构建并签名 App。生成的 zip 会同步到仓库 `downloads/` 目录，同时更新 `SHA256SUMS.txt`。
 
 ## 使用
 
@@ -65,9 +69,11 @@ build/release/Clash-Verge-Auto-Switch-macOS-arm64.zip
 
 首次使用建议顺序：
 
-1. 点击“测速”，只检查最快节点，不切换。
-2. 确认输出正常后，再点击“立即切换”。
-3. 需要长期使用时，打开“自动切换最快节点”，设置间隔分钟。
+1. 首次启动后，自动切换默认开启，第一次执行会等待 30 分钟。
+2. 建议先点击“测速”，只检查最快节点，不切换。
+3. 确认输出正常后，再点击“立即切换”或等待自动执行。
+4. 如果不需要自动切换，可以手动关闭；下次启动会保持关闭状态。
+5. 如果不希望因为小幅延迟变化切换节点，保留默认 50ms 阈值。
 
 ## 注意
 

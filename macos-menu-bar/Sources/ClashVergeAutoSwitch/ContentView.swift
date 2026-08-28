@@ -41,6 +41,20 @@ struct ContentView: View {
                 }
 
                 HStack {
+                    Stepper(
+                        "切换阈值 \(model.switchThresholdMs) 毫秒",
+                        value: $model.switchThresholdMs,
+                        in: 0...500,
+                        step: 10
+                    )
+                    Spacer()
+                }
+
+                Text("仅当新节点至少快于当前节点该数值时切换")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack {
                     Text("上次：\(model.lastAutoRunText)")
                     Spacer()
                     Text("下次：\(model.nextRunText)")
@@ -66,7 +80,7 @@ struct ContentView: View {
             Divider()
 
             HStack {
-                Text("固定当前链路，需要时自动打开 Clash Verge")
+                Text("每次检测当前链路，需要时自动打开 Clash Verge")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

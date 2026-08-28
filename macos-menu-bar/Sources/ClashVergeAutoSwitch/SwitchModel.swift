@@ -6,8 +6,9 @@ final class SwitchModel: ObservableObject {
     @Published var statusText = "未检测"
     @Published var lastOutput = "点击“测速”检查当前链路最快节点。"
     @Published var isRunning = false
-    @Published var autoSwitchEnabled = false {
+    @Published var autoSwitchEnabled = true {
         didSet {
+            UserDefaults.standard.set(autoSwitchEnabled, forKey: Self.autoSwitchEnabledKey)
             if autoSwitchEnabled {
                 scheduleNextAutoSwitch()
             } else {
@@ -20,9 +21,18 @@ final class SwitchModel: ObservableObject {
             if intervalMinutes < 1 {
                 intervalMinutes = 1
             }
+            UserDefaults.standard.set(intervalMinutes, forKey: Self.intervalMinutesKey)
             if autoSwitchEnabled {
                 scheduleNextAutoSwitch()
             }
+        }
+    }
+    @Published var switchThresholdMs = 50 {
+        didSet {
+            if switchThresholdMs < 0 {
+                switchThresholdMs = 0
+            }
+            UserDefaults.standard.set(switchThresholdMs, forKey: Self.switchThresholdKey)
         }
     }
     @Published var nextRunText = "未开启"
@@ -30,15 +40,15 @@ final class SwitchModel: ObservableObject {
 
     var statusIcon: String {
         if isRunning {
-            return "arrow.triangle.2.circlepath"
+            return "arrow.triangle.2.circlepath.circle.fill"
         }
         if statusText.contains("可用") || statusText.contains("完成") {
-            return "bolt.horizontal.circle"
+            return "bolt.fill"
         }
         if statusText.contains("失败") || statusText.contains("不可用") {
-            return "exclamationmark.triangle"
+            return "exclamationmark.triangle.fill"
         }
-        return "bolt.horizontal"
+        return "bolt.fill"
     }
 
     private let projectRoot: URL
@@ -46,27 +56,42 @@ final class SwitchModel: ObservableObject {
     private var autoSwitchTimer: Timer?
 
     init() {
-        let executable = Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0])
-        let bundleRoot = executable
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+        let resolvedProjectRoot: URL
+        let resolvedScriptPath: URL
 
-        let bundledScript = bundleRoot.appendingPathComponent("Resources/scripts/switch_fastest.py")
-        if FileManager.default.fileExists(atPath: bundledScript.path) {
-            self.projectRoot = bundleRoot.appendingPathComponent("Resources")
-            self.scriptPath = bundledScript
-            return
+        if let resourceRoot = Bundle.main.resourceURL {
+            let bundledScript = resourceRoot.appendingPathComponent("scripts/switch_fastest.py")
+            if FileManager.default.fileExists(atPath: bundledScript.path) {
+                resolvedProjectRoot = resourceRoot
+                resolvedScriptPath = bundledScript
+            } else {
+                let sourceRoot = Self.sourceProjectRoot()
+                resolvedProjectRoot = sourceRoot
+                resolvedScriptPath = sourceRoot.appendingPathComponent("scripts/switch_fastest.py")
+            }
+        } else {
+            let sourceRoot = Self.sourceProjectRoot()
+            resolvedProjectRoot = sourceRoot
+            resolvedScriptPath = sourceRoot.appendingPathComponent("scripts/switch_fastest.py")
         }
 
-        let sourceRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        self.projectRoot = sourceRoot
-        self.scriptPath = sourceRoot.appendingPathComponent("scripts/switch_fastest.py")
+        self.projectRoot = resolvedProjectRoot
+        self.scriptPath = resolvedScriptPath
+
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: Self.intervalMinutesKey) != nil {
+            intervalMinutes = max(defaults.integer(forKey: Self.intervalMinutesKey), 1)
+        }
+        if defaults.object(forKey: Self.switchThresholdKey) != nil {
+            switchThresholdMs = max(defaults.integer(forKey: Self.switchThresholdKey), 0)
+        }
+        if defaults.object(forKey: Self.autoSwitchEnabledKey) != nil {
+            autoSwitchEnabled = defaults.bool(forKey: Self.autoSwitchEnabledKey)
+        }
+
+        if autoSwitchEnabled {
+            scheduleNextAutoSwitch()
+        }
     }
 
     func refreshStatus() {
@@ -87,7 +112,12 @@ final class SwitchModel: ObservableObject {
 
     private func scriptArguments(extra: [String]) -> [String] {
         var arguments = extra
-        arguments.append(contentsOf: ["--group-scope", "current", "--launch-if-needed"])
+        arguments.append(contentsOf: [
+            "--group-scope", "current",
+            "--launch-if-needed",
+            "--concurrency", "5",
+            "--switch-threshold-ms", String(switchThresholdMs),
+        ])
         return arguments
     }
 
@@ -182,7 +212,34 @@ final class SwitchModel: ObservableObject {
         } else {
             lastOutput += text
         }
+
+        if lastOutput.count > Self.maximumLogCharacters {
+            lastOutput = "[较早日志已省略]\n" + String(lastOutput.suffix(Self.retainedLogCharacters))
+        }
     }
+
+    private static func sourceProjectRoot() -> URL {
+        let currentDirectory = URL(
+            fileURLWithPath: FileManager.default.currentDirectoryPath,
+            isDirectory: true
+        )
+        let candidates = [currentDirectory, currentDirectory.deletingLastPathComponent()]
+
+        for candidate in candidates {
+            let script = candidate.appendingPathComponent("scripts/switch_fastest.py")
+            if FileManager.default.fileExists(atPath: script.path) {
+                return candidate
+            }
+        }
+
+        return currentDirectory
+    }
+
+    private static let intervalMinutesKey = "intervalMinutes"
+    private static let switchThresholdKey = "switchThresholdMs"
+    private static let autoSwitchEnabledKey = "autoSwitchEnabled"
+    private static let maximumLogCharacters = 100_000
+    private static let retainedLogCharacters = 80_000
 
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
