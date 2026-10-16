@@ -4,6 +4,7 @@ import { useLockFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 
 import { BasePage } from '@/components/base'
+import SettingAutoSwitch from '@/components/setting/setting-auto-switch'
 import SettingClash from '@/components/setting/setting-clash'
 import SettingSystem from '@/components/setting/setting-system'
 import SettingVergeAdvanced from '@/components/setting/setting-verge-advanced'
@@ -92,6 +93,9 @@ const SettingPage = () => {
             }}
           >
             <SettingClash onError={onError} />
+          </Box>
+          <Box sx={{ borderRadius: 2, mt: 1.5, bgcolor: 'background.paper' }}>
+            <SettingAutoSwitch />
           </Box>
         </Grid>
         <Grid size={6}>

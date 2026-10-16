@@ -689,6 +689,25 @@ export interface TranslationResources {
       }
     }
     settings: {
+      autoSwitch: {
+        description: string
+        enabled: string
+        interval: string
+        lastRun: string
+        measured: string
+        never: string
+        nextRun: string
+        running: string
+        save: string
+        skipped: string
+        switch: string
+        switched: string
+        test: string
+        threshold: string
+        title: string
+        unavailable: string
+        unchanged: string
+      }
       components: {
         verge: {
           advanced: {

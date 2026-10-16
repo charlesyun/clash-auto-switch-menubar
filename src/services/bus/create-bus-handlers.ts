@@ -113,6 +113,7 @@ export const createEventBus = (deps: BusHandlerDeps) => {
   }
 
   const onWindowFocus = () => {
+    handleRefreshProxyConfig()
     deps.handleNotice(['core_start::error', ''])
   }
 

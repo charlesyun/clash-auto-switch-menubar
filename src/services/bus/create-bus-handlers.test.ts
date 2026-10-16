@@ -198,3 +198,10 @@ it('explains a startup core rejection instead of the generic fallback notice', a
     0,
   )
 })
+
+it('refreshes proxy data on focus and coalesces rapid focus changes', async () => {
+  const bus = await mountBus()
+  bus.onWindowFocus()
+  bus.onWindowFocus()
+  expect(revalidateQueries).toHaveBeenCalledExactlyOnceWith([['getProxyView']])
+})

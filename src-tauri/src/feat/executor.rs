@@ -170,6 +170,9 @@ pub(super) async fn apply(config_write: &MutexGuard<'_, ()>, patch: Patch<'_>, e
                 announce(Refresh::Clash);
             }
             logging_error!(Type::Backup, AutoBackupManager::global().refresh_settings().await);
+            crate::core::auto_switch::AutoSwitchManager::global()
+                .refresh_settings()
+                .await;
             announce(Refresh::Verge);
         }
         Patch::Clash(_) => announce(Refresh::Clash),

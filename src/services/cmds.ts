@@ -603,3 +603,27 @@ export async function checkMediaUnlock(onComplete: Channel<UnlockItem>) {
 export async function checkMediaUnlockItem(name: string) {
   return invoke<UnlockItem>('check_media_unlock_item', { name })
 }
+
+export interface AutoSwitchStatus {
+  running: boolean
+  dryRun: boolean
+  lastRun: number | null
+  nextRun: number | null
+  error: string | null
+  results: {
+    group: string
+    current: string
+    winner: string | null
+    delay: number | null
+    outcome: 'measured' | 'unchanged' | 'switched' | 'skipped' | 'unavailable'
+    warning: string | null
+  }[]
+}
+
+export function getAutoSwitchStatus() {
+  return invoke<AutoSwitchStatus>('get_auto_switch_status')
+}
+
+export function runAutoSwitch(dryRun: boolean) {
+  return invoke<AutoSwitchStatus>('run_auto_switch', { dryRun })
+}

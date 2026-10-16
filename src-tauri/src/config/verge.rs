@@ -121,6 +121,12 @@ pub struct IVerge {
 
     pub default_latency_timeout: Option<i16>,
 
+    pub enable_auto_switch: Option<bool>,
+
+    pub auto_switch_interval_minutes: Option<u64>,
+
+    pub auto_switch_threshold_ms: Option<u32>,
+
     pub enable_auto_delay_detection: Option<bool>,
 
     /// 自动检测当前节点延迟的间隔（分钟）
@@ -471,6 +477,9 @@ impl IVerge {
         patch!(auto_check_update);
         patch!(default_latency_test);
         patch!(default_latency_timeout);
+        patch!(enable_auto_switch);
+        patch!(auto_switch_interval_minutes);
+        patch!(auto_switch_threshold_ms);
         patch!(enable_auto_delay_detection);
         patch!(auto_delay_detection_interval_minutes);
         patch!(enable_builtin_enhanced);

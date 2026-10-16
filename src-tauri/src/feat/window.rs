@@ -134,6 +134,7 @@ pub async fn quit() -> clash_verge_signal::ShutdownOutcome {
     logging!(debug, Type::System, "启动退出流程");
     // 设置退出标志
     handle::Handle::global().set_is_exiting();
+    crate::core::auto_switch::AutoSwitchManager::global().stop();
 
     Config::apply_all_and_save_file().await;
 
@@ -148,6 +149,9 @@ pub async fn quit() -> clash_verge_signal::ShutdownOutcome {
 
     if should_abort_exit_after_cleanup(cleanup_result.core_stopped) {
         handle::Handle::global().clear_is_exiting();
+        crate::core::auto_switch::AutoSwitchManager::global()
+            .refresh_settings()
+            .await;
         // A failed stop may still have marked the core stopped, and exit cleanup skipped the DNS restore.
         // A core that kept running keeps its DNS, whatever an unapplied config draft says.
         #[cfg(target_os = "macos")]

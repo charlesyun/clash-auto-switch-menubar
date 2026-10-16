@@ -177,3 +177,16 @@ async fn run_tray_sync_loop() {
         }
     }
 }
+
+#[tauri::command]
+pub fn get_auto_switch_status() -> crate::core::auto_switch::AutoSwitchStatus {
+    crate::core::auto_switch::AutoSwitchManager::global().status()
+}
+
+#[tauri::command]
+pub async fn run_auto_switch(dry_run: bool) -> CmdResult<crate::core::auto_switch::AutoSwitchStatus> {
+    crate::core::auto_switch::AutoSwitchManager::global()
+        .run(dry_run)
+        .await
+        .stringify_err()
+}

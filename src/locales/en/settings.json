@@ -1,4 +1,23 @@
 {
+  "autoSwitch": {
+    "title": "Automatic node switching",
+    "enabled": "Enable scheduled switching",
+    "description": "Save settings to apply. Speed tests use the saved latency URL and timeout, with up to 5 concurrent requests. Runs in the background and in lightweight mode. Direct selections are preserved. Manual actions use saved settings.",
+    "interval": "Interval (minutes)",
+    "threshold": "Minimum improvement (ms)",
+    "save": "Save settings",
+    "test": "Speed test only",
+    "switch": "Switch to fastest",
+    "never": "Not scheduled / never run",
+    "running": "Testing the active proxy groups…",
+    "lastRun": "Last run: {{time}}",
+    "nextRun": "Next scheduled run: {{time}}",
+    "measured": "Measured",
+    "unchanged": "Kept current node",
+    "switched": "Switched",
+    "skipped": "Skipped: selection changed",
+    "unavailable": "No reachable candidates"
+  },
   "page": {
     "actions": {
       "manual": "Manual",

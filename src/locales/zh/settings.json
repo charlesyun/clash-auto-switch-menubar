@@ -1,4 +1,23 @@
 {
+  "autoSwitch": {
+    "title": "自动切换最快节点",
+    "enabled": "开启定时自动切换",
+    "description": "保存后生效，测速使用已保存的延迟测试地址和超时，最多并发 5 个请求。窗口关闭及轻量模式下仍会执行，保留直连选择。手动操作也使用已保存的设置。",
+    "interval": "执行间隔（分钟）",
+    "threshold": "切换阈值（毫秒）",
+    "save": "保存设置",
+    "test": "仅测速",
+    "switch": "切换最快节点",
+    "never": "未安排 / 尚未执行",
+    "running": "正在检测当前代理组…",
+    "lastRun": "最近执行：{{time}}",
+    "nextRun": "下次定时执行：{{time}}",
+    "measured": "测速完成",
+    "unchanged": "保留当前节点",
+    "switched": "已切换",
+    "skipped": "选择已变化，跳过",
+    "unavailable": "没有可用节点"
+  },
   "page": {
     "actions": {
       "manual": "使用手册",
