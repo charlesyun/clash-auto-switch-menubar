@@ -87,107 +87,139 @@ const SettingAutoSwitch = ({
     }
   }
 
+  const resultList = status?.results.map((result) => (
+    <Box key={result.group}>
+      <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+        {result.group}: {outcomes[result.outcome]} · {result.current}
+        {result.winner && ` → ${result.winner}`}
+        {result.delay != null && ` (${result.delay} ms)`}
+      </Typography>
+      {result.warning && <Alert severity="warning">{result.warning}</Alert>}
+    </Box>
+  ))
+  const lastRun = status?.running
+    ? t('settings.autoSwitch.running')
+    : t('settings.autoSwitch.lastRun', { time: time(status?.lastRun) })
+  const nextRun = t('settings.autoSwitch.nextRun', {
+    time: time(status?.nextRun),
+  })
+
+  if (mode === 'controls')
+    return (
+      <Box className="auto-switch-controls">
+        <Typography sx={{ fontWeight: 650, fontSize: 13, mb: 1 }}>
+          {t('settings.autoSwitch.title')}
+        </Typography>
+        <Typography color="text.secondary" variant="body2">
+          {verge?.enable_auto_switch
+            ? t('settings.minimal.autoOn', {
+                minutes: verge.auto_switch_interval_minutes ?? 30,
+                threshold: verge.auto_switch_threshold_ms ?? 50,
+              })
+            : t('settings.minimal.autoOff')}
+        </Typography>
+        <Stack
+          className="auto-actions"
+          direction="row"
+          spacing={1}
+          sx={{ flexWrap: 'wrap', gap: 0.5 }}
+        >
+          <Button
+            variant="contained"
+            onClick={() => run(false)}
+            disabled={disabled}
+          >
+            {t('settings.autoSwitch.switch')}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => run(true)}
+            disabled={disabled}
+          >
+            {t('settings.autoSwitch.test')}
+          </Button>
+        </Stack>
+        <Box
+          className="auto-timing"
+          sx={{ color: 'text.secondary' }}
+          aria-live="polite"
+        >
+          <Typography variant="caption" component="p">
+            {lastRun}
+          </Typography>
+          <Typography variant="caption" component="p">
+            {nextRun}
+          </Typography>
+        </Box>
+        {status?.error && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            {status.error}
+          </Alert>
+        )}
+        {resultList && resultList.length > 0 && (
+          <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
+            {resultList}
+          </Box>
+        )}
+      </Box>
+    )
+
   return (
     <SettingList title={t('settings.autoSwitch.title')}>
-      {mode === 'settings' && (
-        <SettingItem label={t('settings.autoSwitch.enabled')}>
-          <Switch
-            checked={enabled}
+      <SettingItem label={t('settings.autoSwitch.enabled')}>
+        <Switch
+          checked={enabled}
+          disabled={busy || !verge}
+          onChange={(_, checked) =>
+            setDraft({ enabled: checked, interval, threshold })
+          }
+          slotProps={{
+            input: { 'aria-label': t('settings.autoSwitch.enabled') },
+          }}
+        />
+      </SettingItem>
+      <Box sx={{ px: 2, pb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t('settings.autoSwitch.description')}
+        </Typography>
+        <Stack direction="row" spacing={1.5} sx={{ mb: 1.5 }}>
+          <TextField
+            label={t('settings.autoSwitch.interval')}
+            type="number"
+            size="small"
+            value={interval}
             disabled={busy || !verge}
-            onChange={(_, checked) =>
-              setDraft({ enabled: checked, interval, threshold })
+            onChange={(event) =>
+              setDraft({ enabled, interval: event.target.value, threshold })
             }
-            slotProps={{
-              input: { 'aria-label': t('settings.autoSwitch.enabled') },
-            }}
+            slotProps={{ htmlInput: { min: 1, max: 1440, step: 1 } }}
+            fullWidth
           />
-        </SettingItem>
-      )}
-      <Box sx={{ px: 2, pb: 1 }}>
-        <Stack spacing={1.5}>
-          <Typography variant="body2" color="text.secondary">
-            {mode === 'settings'
-              ? t('settings.autoSwitch.description')
-              : verge?.enable_auto_switch
-                ? t('settings.minimal.autoOn', {
-                    minutes: verge.auto_switch_interval_minutes ?? 30,
-                    threshold: verge.auto_switch_threshold_ms ?? 50,
-                  })
-                : t('settings.minimal.autoOff')}
-          </Typography>
-          {mode === 'settings' && (
-            <Stack direction="row" spacing={1}>
-              <TextField
-                label={t('settings.autoSwitch.interval')}
-                type="number"
-                size="small"
-                value={interval}
-                disabled={busy || !verge}
-                onChange={(event) =>
-                  setDraft({ enabled, interval: event.target.value, threshold })
-                }
-                slotProps={{ htmlInput: { min: 1, max: 1440, step: 1 } }}
-                fullWidth
-              />
-              <TextField
-                label={t('settings.autoSwitch.threshold')}
-                type="number"
-                size="small"
-                value={threshold}
-                disabled={busy || !verge}
-                onChange={(event) =>
-                  setDraft({ enabled, interval, threshold: event.target.value })
-                }
-                slotProps={{ htmlInput: { min: 0, max: 10000, step: 1 } }}
-                fullWidth
-              />
-            </Stack>
-          )}
-          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-            {mode === 'settings' && (
-              <Button
-                onClick={save}
-                disabled={!valid || busy || !verge}
-                variant="contained"
-              >
-                {t('settings.autoSwitch.save')}
-              </Button>
-            )}
-            {mode === 'controls' && (
-              <Button onClick={() => run(true)} disabled={disabled}>
-                {t('settings.autoSwitch.test')}
-              </Button>
-            )}
-            {mode === 'controls' && (
-              <Button onClick={() => run(false)} disabled={disabled}>
-                {t('settings.autoSwitch.switch')}
-              </Button>
-            )}
-          </Stack>
-          <Typography variant="body2" aria-live="polite">
-            {status?.running
-              ? t('settings.autoSwitch.running')
-              : t('settings.autoSwitch.lastRun', {
-                  time: time(status?.lastRun),
-                })}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t('settings.autoSwitch.nextRun', { time: time(status?.nextRun) })}
-          </Typography>
-          {status?.error && <Alert severity="warning">{status.error}</Alert>}
-          {status?.results.map((result) => (
-            <Box key={result.group}>
-              <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-                {result.group}: {outcomes[result.outcome]} · {result.current}
-                {result.winner && ` → ${result.winner}`}
-                {result.delay != null && ` (${result.delay} ms)`}
-              </Typography>
-              {result.warning && (
-                <Alert severity="warning">{result.warning}</Alert>
-              )}
-            </Box>
-          ))}
+          <TextField
+            label={t('settings.autoSwitch.threshold')}
+            type="number"
+            size="small"
+            value={threshold}
+            disabled={busy || !verge}
+            onChange={(event) =>
+              setDraft({ enabled, interval, threshold: event.target.value })
+            }
+            slotProps={{ htmlInput: { min: 0, max: 10000, step: 1 } }}
+            fullWidth
+          />
         </Stack>
+        <Button
+          onClick={save}
+          disabled={!valid || busy || !verge}
+          variant="contained"
+        >
+          {t('settings.autoSwitch.save')}
+        </Button>
+        {status?.error && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            {status.error}
+          </Alert>
+        )}
       </Box>
     </SettingList>
   )

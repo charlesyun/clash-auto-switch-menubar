@@ -1,4 +1,4 @@
-import { PublicRounded, RefreshRounded } from '@mui/icons-material'
+import { RefreshRounded } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -85,36 +85,25 @@ const ProxyPage = () => {
         </Stack>
       }
     >
-      <Stack spacing={2.5}>
+      <Stack spacing={2}>
         {isProxyViewError && (
           <Alert severity="warning">{t('settings.minimal.readError')}</Alert>
         )}
-        <Box
-          className="essential-card"
-          sx={{ bgcolor: 'background.paper', p: 2.5 }}
-        >
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={2.5}
-            sx={{ justifyContent: 'space-between' }}
-          >
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{ alignItems: 'center', mb: 1.5 }}
-              >
-                <PublicRounded color="primary" />
-                <Typography color="text.secondary" variant="body2">
-                  {t('settings.minimal.currentNode')}
-                </Typography>
-              </Stack>
+        <div className="proxy-overview">
+          <Box className="essential-card proxy-status">
+            <Box sx={{ minWidth: 0 }}>
+              <Typography color="text.secondary" variant="caption">
+                {t('settings.minimal.currentNode')}
+              </Typography>
               <Typography
                 sx={{
-                  fontWeight: 650,
-                  fontSize: 22,
+                  fontSize: 24,
+                  fontWeight: 600,
+                  lineHeight: 1.35,
+                  mt: 1,
+                  mb: 1.5,
                   overflowWrap: 'anywhere',
-                  letterSpacing: '-0.02em',
+                  letterSpacing: '-0.025em',
                 }}
               >
                 {mode === 'direct'
@@ -122,28 +111,25 @@ const ProxyPage = () => {
                   : (selected ?? t('settings.minimal.noSelection'))}
               </Typography>
               <Chip
-                sx={{ mt: 1.5 }}
                 size="small"
                 label={current?.name ?? t('settings.minimal.noSubscription')}
                 variant="outlined"
+                sx={{ maxWidth: '100%', color: 'text.secondary' }}
               />
             </Box>
-            <Box sx={{ minWidth: { md: 230 } }}>
+            <div className="proxy-switches">
               <ProxyControlSwitches onError={showNotice.error} noRightPadding />
               <ProxyControlSwitches
                 label={t('settings.sections.system.toggles.tunMode')}
                 onError={showNotice.error}
                 noRightPadding
               />
-            </Box>
-          </Stack>
-        </Box>
-        <Box
-          className="essential-card"
-          sx={{ bgcolor: 'background.paper', px: 1, pb: 1 }}
-        >
-          <SettingAutoSwitch mode="controls" />
-        </Box>
+            </div>
+          </Box>
+          <Box className="essential-card">
+            <SettingAutoSwitch mode="controls" />
+          </Box>
+        </div>
         <NodeList />
       </Stack>
     </BasePage>

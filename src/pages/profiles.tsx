@@ -76,7 +76,7 @@ const ProfilePage = () => {
     })
   return (
     <BasePage title={t('settings.minimal.subscriptionsTitle')}>
-      <Stack spacing={2.5}>
+      <Stack spacing={1.5}>
         <Typography color="text.secondary" variant="body2">
           {t('settings.minimal.subscriptionsHint')}
         </Typography>
@@ -87,7 +87,7 @@ const ProfilePage = () => {
             event.preventDefault()
             if (isValidUrl(url.trim()) && !busy) void add()
           }}
-          sx={{ bgcolor: 'background.paper', p: 2.5 }}
+          sx={{ bgcolor: 'background.paper', p: 2 }}
         >
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <TextField
@@ -124,8 +124,9 @@ const ProfilePage = () => {
           return (
             <Box
               key={profile.uid}
-              className="essential-card"
-              sx={{ bgcolor: 'background.paper', p: 2.5 }}
+              className="essential-card profile-row"
+              data-active={active}
+              sx={{ bgcolor: 'background.paper', p: 2 }}
             >
               <Stack
                 direction="row"
@@ -143,7 +144,7 @@ const ProfilePage = () => {
                   >
                     <Typography
                       sx={{
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: 650,
                         overflowWrap: 'anywhere',
                       }}

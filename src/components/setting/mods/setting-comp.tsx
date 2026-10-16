@@ -30,7 +30,7 @@ export const SettingItem: React.FC<ItemProps> = ({
   const clickable = !!onClick
 
   const primary = (
-    <Box sx={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
       <span>{label}</span>
       {extra ? extra : null}
     </Box>
@@ -50,7 +50,11 @@ export const SettingItem: React.FC<ItemProps> = ({
 
   return clickable ? (
     <ListItem disablePadding>
-      <ListItemButton onClick={handleClick} disabled={isLoading}>
+      <ListItemButton
+        onClick={handleClick}
+        disabled={isLoading}
+        sx={{ minHeight: 44 }}
+      >
         <ListItemText primary={primary} secondary={secondary} />
         {isLoading ? (
           <CircularProgress color="inherit" size={20} />
@@ -60,7 +64,7 @@ export const SettingItem: React.FC<ItemProps> = ({
       </ListItemButton>
     </ListItem>
   ) : (
-    <ListItem sx={{ pt: '5px', pb: '5px' }}>
+    <ListItem sx={{ minHeight: 44, py: 0.75, gap: 2 }}>
       <ListItemText primary={primary} secondary={secondary} />
       {children}
     </ListItem>
@@ -71,10 +75,15 @@ export const SettingList: React.FC<{
   title: string
   children: ReactNode
 }> = ({ title, children }) => (
-  <List>
+  <List sx={{ py: 0.5 }}>
     <ListSubheader
       sx={[
-        { background: 'transparent', fontSize: '16px', fontWeight: '700' },
+        {
+          background: 'transparent',
+          fontSize: '13px',
+          fontWeight: '650',
+          lineHeight: '44px',
+        },
         ({ palette }) => {
           return {
             color: palette.text.primary,

@@ -1,5 +1,5 @@
 import { BoltRounded } from '@mui/icons-material'
-import { Box, Chip, List, Typography } from '@mui/material'
+import { Box, List, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 
 import { useSystemState } from '@/hooks/use-system-state'
@@ -21,37 +21,46 @@ export const LayoutSidebar = () => {
         <Box className="app-mark">
           <BoltRounded />
         </Box>
-        <Box>
-          <Typography sx={{ fontWeight: 750 }}>Verge</Typography>
-          <Typography variant="caption" color="text.secondary">
-            ESSENTIAL
-          </Typography>
-        </Box>
+        <Typography
+          sx={{ fontWeight: 650, fontSize: 13, letterSpacing: '-0.02em' }}
+        >
+          Clash Verge
+        </Typography>
       </Box>
       <List className="the-menu">
         {navItems.map((item) => (
           <LayoutItem key={item.path} to={item.path} icon={item.icon}>
-            {t(item.label)}
+            {t(
+              item.path === '/'
+                ? 'settings.minimal.proxyTitle'
+                : item.path === '/profile'
+                  ? 'settings.minimal.subscriptionsTitle'
+                  : 'settings.minimal.settingsTitle',
+            )}
           </LayoutItem>
         ))}
       </List>
       <Box className="sidebar-footer">
-        <Chip
-          size="small"
-          color={ready ? 'success' : 'default'}
-          variant="outlined"
-          label={
-            ready
-              ? t('settings.minimal.coreReady')
-              : t('settings.minimal.coreStopped')
-          }
-        />
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: 'block', mt: 1 }}
+        <Box
+          role="status"
+          sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.75 }}
         >
-          v{version} · Essential
+          <Box
+            sx={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              bgcolor: ready ? 'success.main' : 'text.disabled',
+            }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            {ready
+              ? t('settings.minimal.coreReady')
+              : t('settings.minimal.coreStopped')}
+          </Typography>
+        </Box>
+        <Typography variant="caption" color="text.secondary">
+          v{version}
         </Typography>
       </Box>
     </aside>

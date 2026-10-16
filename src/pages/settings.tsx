@@ -55,14 +55,18 @@ const SettingPage = () => {
   const card = { bgcolor: 'background.paper' }
   return (
     <BasePage title={t('settings.minimal.settingsTitle')}>
-      <Stack spacing={2.5}>
-        <Typography color="text.secondary" variant="body2">
+      <Box className="settings-sections">
+        <Typography
+          className="settings-intro"
+          color="text.secondary"
+          variant="body2"
+        >
           {t('settings.minimal.settingsHint')}
         </Typography>
         <Box className="essential-card" sx={card}>
           <SettingSystem onError={showNotice.error} />
         </Box>
-        <Box className="essential-card" sx={{ ...card, px: 1, pb: 1 }}>
+        <Box className="essential-card" sx={card}>
           <SettingAutoSwitch />
         </Box>
         <Box className="essential-card" sx={card}>
@@ -124,7 +128,7 @@ const SettingPage = () => {
           </SettingList>
           <ClashPortViewer ref={portRef} />
         </Box>
-        <Box className="essential-card" sx={{ ...card, p: 2.5 }}>
+        <Box className="essential-card" sx={{ ...card, p: 2 }}>
           <Typography sx={{ fontWeight: 650, mb: 2 }}>
             {t('settings.minimal.latencySettings')}
           </Typography>
@@ -168,7 +172,12 @@ const SettingPage = () => {
         <Box className="essential-card" sx={card}>
           <LocalBackup />
         </Box>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+        <Stack
+          className="settings-footer"
+          direction="row"
+          spacing={1}
+          sx={{ flexWrap: 'wrap', gap: 1 }}
+        >
           <Button
             onClick={() => {
               void mutate(restartCore, { id: 'restart-core' }).catch(() => {})
@@ -193,7 +202,7 @@ const SettingPage = () => {
             {t('settings.minimal.openLogs')}
           </Button>
         </Stack>
-      </Stack>
+      </Box>
     </BasePage>
   )
 }

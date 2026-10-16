@@ -54,11 +54,15 @@ export const LocalBackup = () => {
     await run(() => restoreLocalBackup(source))
   }
   return (
-    <Box sx={{ p: 2.5 }}>
-      <Typography sx={{ fontWeight: 650, mb: 1.5 }}>
+    <Box sx={{ p: 2 }}>
+      <Typography sx={{ fontSize: 13, fontWeight: 650, mb: 1.5 }}>
         {t('settings.minimal.backup')}
       </Typography>
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ mb: 2, flexWrap: 'wrap', gap: 0.5 }}
+      >
         <Button
           variant="outlined"
           disabled={busy}

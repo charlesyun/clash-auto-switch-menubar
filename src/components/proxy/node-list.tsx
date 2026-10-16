@@ -1,4 +1,8 @@
-import { CheckCircleRounded, SpeedRounded } from '@mui/icons-material'
+import {
+  CheckCircleRounded,
+  RadioButtonUncheckedRounded,
+  SpeedRounded,
+} from '@mui/icons-material'
 import {
   Box,
   Button,
@@ -52,7 +56,7 @@ export const NodeList = () => {
   const virtualizer = useVirtualizer({
     count: members.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 68,
+    estimateSize: () => 58,
     overscan: 5,
   })
   const { changeProxy } = useProxySelection({
@@ -114,7 +118,7 @@ export const NodeList = () => {
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1.5}
-        sx={{ p: 2 }}
+        sx={{ p: 1.75, borderBottom: 1, borderColor: 'divider' }}
       >
         <Select
           size="small"
@@ -178,7 +182,7 @@ export const NodeList = () => {
         ref={scrollRef}
         role="radiogroup"
         aria-label={t('settings.minimal.nodes')}
-        sx={{ height: members.length ? 408 : 0, overflow: 'auto' }}
+        sx={{ height: members.length ? 348 : 0, overflow: 'auto' }}
       >
         <Box
           sx={{ height: virtualizer.getTotalSize(), position: 'relative' }}
@@ -190,6 +194,7 @@ export const NodeList = () => {
             return (
               <Box
                 key={`${name}:${index}`}
+                className="node-row"
                 sx={{
                   position: 'absolute',
                   top: 0,
@@ -198,7 +203,7 @@ export const NodeList = () => {
                   height: item.size,
                   transform: `translateY(${item.start}px)`,
                   display: 'flex',
-                  borderTop: 1,
+                  borderBottom: 1,
                   borderColor: 'divider',
                 }}
               >
@@ -220,22 +225,25 @@ export const NodeList = () => {
                     flex: 1,
                     minWidth: 0,
                     justifyContent: 'flex-start',
-                    px: 2.5,
+                    px: 2,
                     gap: 1.5,
                     textAlign: 'left',
                     bgcolor: active ? 'action.selected' : undefined,
                   }}
                 >
-                  <CheckCircleRounded
-                    sx={{
-                      color: active ? 'primary.main' : 'divider',
-                      fontSize: 20,
-                    }}
-                  />
+                  {active ? (
+                    <CheckCircleRounded
+                      sx={{ color: 'primary.main', fontSize: 16 }}
+                    />
+                  ) : (
+                    <RadioButtonUncheckedRounded
+                      sx={{ color: 'text.disabled', fontSize: 16 }}
+                    />
+                  )}
                   <Box sx={{ minWidth: 0 }}>
                     <Typography
                       noWrap
-                      sx={{ fontSize: 14, fontWeight: active ? 650 : 500 }}
+                      sx={{ fontSize: 13, fontWeight: active ? 650 : 500 }}
                     >
                       {member.ref.name}
                     </Typography>
@@ -249,7 +257,15 @@ export const NodeList = () => {
                   aria-label={`${t('settings.minimal.testNode')} ${member.ref.name}`}
                   disabled={testing || member.kind === 'unresolved'}
                   onClick={() => test(member)}
-                  sx={{ minWidth: 90, fontVariantNumeric: 'tabular-nums' }}
+                  sx={{
+                    minWidth: 84,
+                    borderRadius: 0,
+                    color: 'text.secondary',
+                    fontSize: 11,
+                    fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                    fontVariantNumeric: 'tabular-nums',
+                    bgcolor: active ? 'action.selected' : undefined,
+                  }}
                 >
                   {delayText(member)}
                 </Button>

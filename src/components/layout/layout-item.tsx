@@ -24,12 +24,13 @@ export const LayoutItem = ({
         selected={Boolean(match)}
         aria-current={match ? 'page' : undefined}
         onClick={() => navigate(to)}
-        sx={{ borderRadius: 2.5, py: 1.2 }}
+        sx={{ borderRadius: 1, py: 0.75, px: 1.25, minHeight: 38 }}
       >
         <ListItemIcon
           sx={{
-            minWidth: 36,
+            minWidth: 28,
             color: match ? 'primary.main' : 'text.secondary',
+            '& svg': { fontSize: 18 },
           }}
         >
           {icon}
@@ -37,7 +38,7 @@ export const LayoutItem = ({
         <ListItemText
           primary={children}
           slotProps={{
-            primary: { sx: { fontSize: 14, fontWeight: match ? 650 : 500 } },
+            primary: { sx: { fontSize: 12, fontWeight: match ? 650 : 500 } },
           }}
         />
       </ListItemButton>

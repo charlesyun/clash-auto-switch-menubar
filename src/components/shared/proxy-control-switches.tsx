@@ -1,11 +1,9 @@
 import {
   DeleteForeverRounded,
-  PauseCircleOutlineRounded,
-  PlayCircleOutlineRounded,
   SettingsRounded,
   WarningRounded,
 } from '@mui/icons-material'
-import { Box, Typography, alpha, useTheme } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { useLockFn } from 'ahooks'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -54,7 +52,6 @@ const SwitchRow = ({
   onError,
   highlight,
 }: SwitchRowProps) => {
-  const theme = useTheme()
   const [checked, setChecked] = useState(active)
   const pendingRef = useRef(false)
 
@@ -86,25 +83,29 @@ const SwitchRow = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        p: 1,
-        pr: 2,
-        borderRadius: 1.5,
-        bgcolor: highlight
-          ? alpha(theme.palette.success.main, 0.07)
-          : 'transparent',
+        py: 0.75,
+        px: 1,
+        gap: 1.5,
+        borderRadius: 1,
+        bgcolor: highlight ? 'action.selected' : 'transparent',
         opacity: disabled ? 0.6 : 1,
         transition: 'background-color 0.3s',
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        {active ? (
-          <PlayCircleOutlineRounded sx={{ color: 'success.main', mr: 1 }} />
-        ) : (
-          <PauseCircleOutlineRounded sx={{ color: 'text.disabled', mr: 1 }} />
-        )}
+        <Box
+          sx={{
+            width: 5,
+            height: 5,
+            flexShrink: 0,
+            borderRadius: '50%',
+            bgcolor: active ? 'success.main' : 'text.disabled',
+            mr: 1,
+          }}
+        />
         <Typography
           variant="subtitle1"
-          sx={{ fontWeight: 500, fontSize: '15px' }}
+          sx={{ fontWeight: 500, fontSize: '12px', whiteSpace: 'nowrap' }}
         >
           {label}
         </Typography>

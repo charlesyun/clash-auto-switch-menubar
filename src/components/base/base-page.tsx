@@ -21,7 +21,7 @@ export const BasePage = ({
         <Typography
           component="h1"
           data-tauri-drag-region="true"
-          sx={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em' }}
+          sx={{ fontSize: 22, fontWeight: 650, letterSpacing: '-0.025em' }}
         >
           {title}
         </Typography>

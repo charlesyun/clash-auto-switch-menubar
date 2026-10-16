@@ -25,51 +25,109 @@ export const useCustomTheme = () => {
       .catch(console.error)
     return () => media.removeEventListener('change', sync)
   }, [themeMode, setMode])
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode,
-          primary: { main: mode === 'light' ? '#2867d8' : '#8aafff' },
-          success: { main: mode === 'light' ? '#24815b' : '#66c6a0' },
-          background: {
-            default: mode === 'light' ? '#f5f6f8' : '#16181d',
-            paper: mode === 'light' ? '#ffffff' : '#20232b',
-          },
-          text: {
-            primary: mode === 'light' ? '#202734' : '#edf0f7',
-            secondary: mode === 'light' ? '#747d8c' : '#9ba4b5',
-          },
-          divider: mode === 'light' ? '#e9ecf1' : '#333845',
+  const theme = useMemo(() => {
+    const dark = mode === 'dark'
+    const accent = dark ? '#71d5b5' : '#20765f'
+    return createTheme({
+      palette: {
+        mode,
+        primary: { main: accent, contrastText: dark ? '#102b23' : '#ffffff' },
+        secondary: { main: dark ? '#9ca9a0' : '#6c786f' },
+        success: { main: accent },
+        background: {
+          default: dark ? '#141817' : '#f2f3ef',
+          paper: dark ? '#1c211f' : '#fdfefb',
         },
-        shape: { borderRadius: 12 },
-        typography: {
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-          button: { textTransform: 'none', fontWeight: 600 },
+        text: {
+          primary: dark ? '#edf1ec' : '#242d27',
+          secondary: dark ? '#9ca9a0' : '#6c786f',
         },
-        components: {
-          MuiButton: {
-            defaultProps: { disableElevation: true },
-            styleOverrides: { root: { borderRadius: 10, minHeight: 36 } },
+        divider: dark ? '#303a33' : '#e0e6dd',
+        action: {
+          selected: alpha(accent, dark ? 0.12 : 0.08),
+          hover: alpha(accent, 0.045),
+        },
+      },
+      shape: { borderRadius: 8 },
+      typography: {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        fontSize: 13,
+        body1: { fontSize: 13, lineHeight: 1.6 },
+        body2: { fontSize: 12, lineHeight: 1.6 },
+        button: { textTransform: 'none', fontSize: 12, fontWeight: 600 },
+        caption: { fontSize: 11 },
+      },
+      components: {
+        MuiButton: {
+          defaultProps: { disableElevation: true },
+          styleOverrides: {
+            root: { borderRadius: 7, minHeight: 32, padding: '5px 12px' },
+            outlined: { borderColor: dark ? '#3b4a40' : '#d5ded3' },
           },
-          MuiOutlinedInput: { styleOverrides: { root: { borderRadius: 10 } } },
-          MuiListItemButton: {
-            styleOverrides: {
-              root: {
-                '&.Mui-selected': {
-                  backgroundColor: alpha(
-                    mode === 'light' ? '#2867d8' : '#8aafff',
-                    0.09,
-                  ),
-                },
+        },
+        MuiIconButton: {
+          styleOverrides: {
+            root: { borderRadius: 7, padding: 7, '& svg': { fontSize: 18 } },
+          },
+        },
+        MuiOutlinedInput: {
+          styleOverrides: {
+            root: {
+              borderRadius: 7,
+              fontSize: 12,
+              background: dark ? '#171d19' : '#f8faf6',
+              '& fieldset': { borderColor: dark ? '#364139' : '#dce4d8' },
+            },
+            input: { padding: '9px 12px' },
+          },
+        },
+        MuiInputLabel: { styleOverrides: { root: { fontSize: 12 } } },
+        MuiSelect: {
+          styleOverrides: { select: { minHeight: '0 !important' } },
+        },
+        MuiChip: {
+          styleOverrides: {
+            root: {
+              borderRadius: 5,
+              height: 23,
+              fontSize: 10,
+              fontWeight: 500,
+            },
+            icon: { fontSize: 14 },
+          },
+        },
+        MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
+        MuiDialog: {
+          styleOverrides: {
+            paper: {
+              border: `1px solid ${dark ? '#364139' : '#e0e6dd'}`,
+              borderRadius: 12,
+            },
+          },
+        },
+        MuiListItemButton: {
+          styleOverrides: {
+            root: {
+              '&.Mui-selected': {
+                backgroundColor: alpha(accent, dark ? 0.12 : 0.08),
+                '&:hover': { backgroundColor: alpha(accent, 0.13) },
               },
             },
           },
         },
-      }),
-    [mode],
-  )
+        MuiButtonBase: {
+          styleOverrides: {
+            root: {
+              '&.Mui-focusVisible': {
+                outline: `2px solid ${accent}`,
+                outlineOffset: -2,
+              },
+            },
+          },
+        },
+      },
+    })
+  }, [mode])
   useEffect(() => {
     const root = document.documentElement
     root.style.colorScheme = mode
@@ -78,6 +136,9 @@ export const useCustomTheme = () => {
       theme.palette.background.default,
     )
     root.style.setProperty('--divider-color', theme.palette.divider)
+    root.style.setProperty('--surface-color', theme.palette.background.paper)
+    root.style.setProperty('--text-primary', theme.palette.text.primary)
+    root.style.setProperty('--text-secondary', theme.palette.text.secondary)
     root.style.setProperty('--primary-main', theme.palette.primary.main)
     root.style.setProperty(
       '--scroller-color',
