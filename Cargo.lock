@@ -1099,7 +1099,6 @@ dependencies = [
  "clash-verge-i18n",
  "clash-verge-limiter",
  "clash-verge-logging",
- "clash-verge-media-unlock",
  "clash-verge-signal",
  "clash_verge_service_ipc",
  "criterion",
@@ -1124,7 +1123,6 @@ dependencies = [
  "percent-encoding",
  "regex",
  "reqwest 0.13.5",
- "reqwest_dav",
  "rfd",
  "runas",
  "rustls",
@@ -1200,20 +1198,6 @@ dependencies = [
  "log",
  "parking_lot",
  "tracing-estuary",
-]
-
-[[package]]
-name = "clash-verge-media-unlock"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clash-verge-logging",
- "log",
- "reqwest 0.13.5",
- "rust_iso3166",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -1959,19 +1943,6 @@ dependencies = [
  "crypto-common 0.2.2",
  "ctutils",
  "zeroize",
-]
-
-[[package]]
-name = "digest_auth"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3054f4e81d395e50822796c5e99ca522e6ba7be98947d6d4b0e5e61640bdb894"
-dependencies = [
- "digest 0.10.7",
- "hex",
- "md-5",
- "rand 0.8.7",
- "sha2 0.10.9",
 ]
 
 [[package]]
@@ -4111,16 +4082,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
-name = "md-5"
-version = "0.10.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
-dependencies = [
- "cfg-if",
- "digest 0.10.7",
-]
-
-[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5048,7 +5009,6 @@ checksum = "010378780309880b08997fae13be7834dba947d36393bd372f2b1556deb2a2f6"
 dependencies = [
  "phf_macros 0.14.0",
  "phf_shared 0.14.0",
- "serde",
 ]
 
 [[package]]
@@ -5856,26 +5816,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reqwest_dav"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b644ce99d853a5f53cef7a9226371f571cf9e63504e396346c4e563defa753"
-dependencies = [
- "async-trait",
- "chrono",
- "digest_auth",
- "http",
- "httpdate",
- "reqwest 0.13.5",
- "serde",
- "serde-xml-rs",
- "serde_derive",
- "serde_json",
- "tokio",
- "url",
-]
-
-[[package]]
 name = "rfd"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5992,17 +5932,6 @@ checksum = "796e8d2b6696392a43bea58116b667fb4c29727dc5abd27d6acf338bb4f688c7"
 dependencies = [
  "cfg-if",
  "ordered-multimap",
-]
-
-[[package]]
-name = "rust_iso3166"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14527538ee75e1937267e5d9c9808bce0680e6051d4ee05eb9efca77e6ee801a"
-dependencies = [
- "js-sys",
- "phf 0.14.0",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -6353,18 +6282,6 @@ dependencies = [
  "serde",
  "serde_core",
  "typeid",
-]
-
-[[package]]
-name = "serde-xml-rs"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb3aa78ecda1ebc9ec9847d5d3aba7d618823446a049ba2491940506da6e2782"
-dependencies = [
- "log",
- "serde",
- "thiserror 1.0.69",
- "xml-rs",
 ]
 
 [[package]]
@@ -9853,12 +9770,6 @@ name = "xkeysym"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
-
-[[package]]
-name = "xml-rs"
-version = "0.8.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 
 [[package]]
 name = "xsum"

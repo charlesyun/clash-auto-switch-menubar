@@ -26,3 +26,11 @@ pnpm exec tauri build --debug --bundles app --config '{"bundle":{"createUpdaterA
 Use the Node, pnpm, Rust and Xcode versions required by the upstream project. Disable the separate switcher's scheduler when trying this integrated version. Official update packages do not include this customization.
 
 Keep custom changes on the feature branch and retain an upstream remote for merging future official releases. Build outputs, dependencies, and personal proxy configurations do not belong in Git.
+
+## Essential UI customization
+
+The local `feature/minimal-ui` branch reduces navigation to Proxy, Subscriptions and Settings. The proxy page combines mode selection, system proxy/TUN controls, native automatic switching and a searchable virtualized node list. Settings retain startup, appearance/language, ports, latency parameters and local ZIP backups.
+
+Removed feature implementations include connection/rule/log viewers, media unlock and website tests, statistics/home cards, custom proxy-chain editing, embedded YAML/script and custom theme editors, QR rendering, navigation reordering and WebDAV backup. The core rule engine, existing merge/script execution, local backups, service/TUN support and diagnostic logging remain. Legacy WebDAV configuration fields remain readable for compatibility; the WebDAV transport and dependency are removed.
+
+Validation: 46 frontend tests and 385 Rust library tests pass; TypeScript, ESLint and the event architecture check pass. The production frontend and macOS arm64 Debug application build successfully. UI verification uses isolated mock IPC data and does not exercise real-network switching or modify the installed application's data. The customized app is locally ad-hoc signed, not notarized. Official updates replace customizations.

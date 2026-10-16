@@ -1,979 +1,274 @@
 import {
-  DragDropProvider,
-  KeyboardSensor,
-  PointerSensor,
-  type DragEndEvent,
-} from '@dnd-kit/react'
-import { isSortable } from '@dnd-kit/react/sortable'
-import {
-  CheckBoxOutlineBlankRounded,
-  CheckBoxRounded,
-  ClearRounded,
-  ContentPasteRounded,
-  DeleteRounded,
-  IndeterminateCheckBoxRounded,
-  LocalFireDepartmentRounded,
+  CheckCircleRounded,
+  DeleteOutlineRounded,
   RefreshRounded,
-  TextSnippetOutlined,
 } from '@mui/icons-material'
-import { Box, Button, Divider, Grid, IconButton, Stack } from '@mui/material'
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { readText } from '@tauri-apps/plugin-clipboard-manager'
-import { readTextFile } from '@tauri-apps/plugin-fs'
-import { useLockFn } from 'ahooks'
-import { throttle } from 'lodash-es'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  LinearProgress,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation } from 'react-router'
-import { closeAllConnections } from 'tauri-plugin-mihomo-api'
 
-import {
-  BasePage,
-  BaseStyledTextField,
-  type DialogRef,
-} from '@/components/base'
-import { ProfileItem } from '@/components/profile/profile-item'
-import { ProfileMore } from '@/components/profile/profile-more'
-import {
-  ProfileViewer,
-  type ProfileViewerRef,
-} from '@/components/profile/profile-viewer'
-import { ConfigViewer } from '@/components/setting/mods/config-viewer'
-import { fetchProfilesIntoCache, useProfiles } from '@/hooks/use-profiles'
-import {
-  createProfile,
-  deleteProfile,
-  enhanceProfiles,
-  getRuntimeLogs,
-  importProfile,
-  reorderProfile,
-  updateProfile,
-} from '@/services/cmds'
+import { BasePage } from '@/components/base'
+import { useProfiles } from '@/hooks/use-profiles'
+import { useAppRefreshers } from '@/providers/app-data-context'
+import { deleteProfile, importProfile, updateProfile } from '@/services/cmds'
 import { mutate } from '@/services/mutate'
-import { errorDetail, showNotice } from '@/services/notice-service'
-import { revalidateQuery, useQuery } from '@/services/query-client'
-import { useThemeMode } from '@/services/states'
-import {
-  useProfileLoadingCache,
-  useProfileUpdates,
-  useSetProfileLoading,
-} from '@/store/app-store-context'
-import { debugLog } from '@/utils/debug'
+import { showNotice } from '@/services/notice-service'
+import { useProfileLoadingCache } from '@/store/app-store-context'
 import { isValidUrl } from '@/utils/network'
-
-// 与 src-tauri/src/main.rs 的 worker_limit 上限(8)保持一致，避免前后端更新风暴不对齐
-const PROFILE_UPDATE_WORKER_LIMIT = 8
-const PROFILE_SWITCH_LOADING_DELAY = 400
-const profilePointerSensor = PointerSensor.configure({
-  activationConstraints: () => undefined,
-})
-
-interface ProfileSwitchRequest {
-  profile: string
-  notifySuccess: boolean
-  force: boolean
-}
-
-const debugProfileSwitch = (action: string, profile: string, extra?: any) => {
-  const timestamp = new Date().toISOString().substring(11, 23)
-  debugLog(`[Profile-Debug][${timestamp}] ${action}: ${profile}`, extra || '')
-}
 
 const ProfilePage = () => {
   const { t } = useTranslation()
-  const location = useLocation()
+  const { profiles, patchProfiles, mutateProfiles, error } = useProfiles()
+  const { refreshAll } = useAppRefreshers()
+  const updating = useProfileLoadingCache()
   const [url, setUrl] = useState('')
-  const [disabled, setDisabled] = useState(false)
-  const [profileDndRevision, setProfileDndRevision] = useState(0)
-  const [activatings, setActivatings] = useState<string[]>([])
-  const [switchTarget, setSwitchTarget] = useState<string | null>(null)
-  const [visibleSwitchingProfile, setVisibleSwitchingProfile] = useState<
-    string | null
-  >(null)
-  const [loading, setLoading] = useState(false)
-
-  const [batchMode, setBatchMode] = useState(false)
-  const [selectedProfiles, setSelectedProfiles] = useState<Set<string>>(
-    () => new Set(),
-  )
-
-  // Profile 切换在前端串行执行；队列中只保留用户最后一次选择。
-  const latestSwitchTargetRef = useRef<string | null>(null)
-  const queuedSwitchRef = useRef<ProfileSwitchRequest | null>(null)
-  const switchRunnerRef = useRef<Promise<void> | null>(null)
-  const switchLoadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  )
-  const currentProfileRef = useRef<string | undefined>(undefined)
-  const profilePageMountedRef = useRef(true)
-  const { current } = location.state || {}
-
-  const {
-    profiles = {},
-    patchProfiles,
-    mutateProfiles,
-    error,
-    isStale,
-  } = useProfiles()
-
-  useEffect(() => {
-    currentProfileRef.current = profiles.current
-  }, [profiles])
-
-  useEffect(() => {
-    const unlisten = getCurrentWindow().onDragDropEvent(async (event) => {
-      if (event.payload.type !== 'drop') return
-      const paths = event.payload.paths
-
-      for (const file of paths) {
-        if (!file.endsWith('.yaml') && !file.endsWith('.yml')) {
-          showNotice.error('profiles.page.feedback.errors.onlyYaml')
-          continue
-        }
-        const item = {
-          type: 'local',
-          name: file.split(/\/|\\/).pop() ?? 'New Profile',
-          desc: '',
-          url: '',
-          option: {
-            with_proxy: false,
-            self_proxy: false,
-          },
-        } as IProfileItem
-        const data = await readTextFile(file)
-        await mutate(() => createProfile(item, data), {
-          id: 'create-profile',
-          errorNotice: false,
-          revalidate: [['getProfiles']],
-        })
-      }
-      await mutate(() => enhanceProfiles(), {
-        id: 'enhance-profiles',
-        errorNotice: false,
-      })
-    })
-
-    return () => {
-      void unlisten.then((cleanup) => cleanup())
-    }
-  }, [])
-
-  const onEmergencyRefresh = useLockFn(async () => {
-    debugLog('[紧急刷新] 开始强制刷新所有数据')
-
+  const [busy, setBusy] = useState(false)
+  const [deleting, setDeleting] = useState<IProfileItem | null>(null)
+  const items =
+    profiles?.items?.filter(
+      (item) => item.type === 'remote' || item.type === 'local',
+    ) ?? []
+  const run = async (operation: () => Promise<unknown>) => {
+    setBusy(true)
     try {
-      await Promise.all([revalidateQuery(['getRuntimeLogs']), mutateProfiles()])
-
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      await onEnhance(false)
-
-      showNotice.success(
-        'profiles.page.feedback.notices.forceRefreshCompleted',
-        2000,
-      )
-    } catch (error) {
-      console.error('[紧急刷新] 失败:', error)
-      showNotice.error(
-        'profiles.page.feedback.notices.emergencyRefreshFailed',
-        { message: errorDetail(error) },
-        4000,
-      )
+      await operation()
+      await mutateProfiles()
+      await refreshAll()
+    } catch (cause) {
+      showNotice.error(cause)
+    } finally {
+      setBusy(false)
     }
-  })
-
-  const { data: chainLogs = {}, refetch: refetchLogs } = useQuery({
-    queryKey: ['getRuntimeLogs'],
-    queryFn: getRuntimeLogs,
-  })
-  const refetchLogsRef = useRef(refetchLogs)
-  refetchLogsRef.current = refetchLogs
-  const mutateLogs = useCallback(() => refetchLogsRef.current(), [])
-
-  const viewerRef = useRef<ProfileViewerRef>(null)
-  const configRef = useRef<DialogRef>(null)
-
-  const profileItems = useMemo(() => {
-    const items = profiles.items || []
-
-    const type1 = ['local', 'remote']
-
-    return items.filter((i) => i?.type && type1.includes(i.type))
-  }, [profiles])
-
-  const currentActivatings = () => {
-    return [...new Set([profiles.current ?? ''])].filter(Boolean)
   }
-
-  const onImport = async () => {
-    if (!url) return
-    if (!isValidUrl(url)) {
-      showNotice.error('profiles.page.feedback.errors.invalidUrl')
-      return
-    }
-    setLoading(true)
-
-    const handleImportSuccess = async (noticeKey: string) => {
-      showNotice.success(noticeKey)
-      setUrl('')
-      await performRobustRefresh()
-    }
-    try {
-      await mutate(() => importProfile(url), {
+  const activate = (uid: string) =>
+    run(async () => {
+      const outcome = await patchProfiles({ current: uid })
+      if (outcome.status !== 'valid')
+        throw new Error(
+          outcome.status === 'busy'
+            ? t('settings.minimal.busy')
+            : t('settings.minimal.activationFailed'),
+        )
+    })
+  const add = () =>
+    run(async () => {
+      await mutate(() => importProfile(url.trim()), {
         id: 'import-profile',
         errorNotice: false,
       })
-      await handleImportSuccess('shared.feedback.notifications.importSuccess')
-    } catch (initialErr) {
-      console.warn('[订阅导入] 首次导入失败:', initialErr)
-
-      const initialDetail = errorDetail(initialErr)
-      if (initialDetail.toLowerCase().includes('legacy tls')) {
-        showNotice.error(initialErr)
-        return
-      }
-
-      showNotice.info('profiles.page.feedback.notifications.importRetry')
-      try {
-        await mutate(
-          () =>
-            importProfile(url, {
-              with_proxy: false,
-              self_proxy: true,
-            }),
-          {
-            id: 'import-profile',
-            errorNotice: false,
-          },
-        )
-        await handleImportSuccess(
-          'shared.feedback.notifications.importWithClashProxy',
-        )
-      } catch (retryErr) {
-        showNotice.error(
-          'profiles.page.feedback.notifications.importFail',
-          retryErr,
-        )
-      }
-    } finally {
-      setDisabled(false)
-      setLoading(false)
-    }
-  }
-
-  // `useProfiles` already retries three times; add only one business-level retry.
-  const performRobustRefresh = async () => {
-    let retryCount = 0
-    const maxRetries = 1
-    const baseDelay = 200
-
-    while (retryCount < maxRetries) {
-      try {
-        debugLog(`[导入刷新] 第${retryCount + 1}次尝试刷新配置数据`)
-
-        await mutateProfiles()
-
-        await new Promise((resolve) =>
-          setTimeout(resolve, baseDelay * (retryCount + 1)),
-        )
-
-        await onEnhance(false)
-        return
-      } catch (error) {
-        console.error(`[导入刷新] 第${retryCount + 1}次刷新失败:`, error)
-        retryCount++
-        await new Promise((resolve) =>
-          setTimeout(resolve, baseDelay * retryCount),
-        )
-      }
-    }
-
-    console.warn(`[导入刷新] 常规刷新失败，尝试清除缓存重新获取`)
-    try {
-      await fetchProfilesIntoCache()
-      await onEnhance(false)
-      showNotice.error(
-        'profiles.page.feedback.notifications.importNeedsRefresh',
-        3000,
-      )
-    } catch (finalError) {
-      console.error(`[导入刷新] 最终刷新尝试失败:`, finalError)
-      showNotice.error(
-        'profiles.page.feedback.notifications.importSuccess',
-        5000,
-      )
-    }
-  }
-
-  const onDragEnd = async (event: DragEndEvent) => {
-    const { operation, canceled } = event
-    const { source, target } = operation
-    if (canceled || !target || !isSortable(source)) return
-
-    const { index: newIndex, initialIndex: oldIndex } = source.sortable
-    if (
-      oldIndex < 0 ||
-      newIndex < 0 ||
-      oldIndex >= profileItems.length ||
-      newIndex >= profileItems.length ||
-      oldIndex === newIndex
-    ) {
-      return
-    }
-
-    const activeId = profileItems[oldIndex]?.uid
-    const overId = profileItems[newIndex]?.uid
-    if (activeId == null || overId == null || activeId === overId) return
-
-    try {
-      await mutate(() => reorderProfile(activeId, overId), {
-        id: 'reorder-profile',
-        errorNotice: false,
-      })
-      mutateProfiles()
-    } catch (error) {
-      setProfileDndRevision((revision) => revision + 1)
-      showNotice.error(error)
-    }
-  }
-
-  const executeProfileSwitch = useCallback(
-    async ({ profile, notifySuccess, force }: ProfileSwitchRequest) => {
-      if (!force && currentProfileRef.current === profile) {
-        debugProfileSwitch('ALREADY_CURRENT_IGNORED', profile)
-        return
-      }
-
-      debugProfileSwitch('SWITCH_START', profile)
-
-      try {
-        const outcome = await patchProfiles({ current: profile })
-        if (outcome.status === 'busy') {
-          debugProfileSwitch('SWITCH_BUSY', profile)
-          showNotice.info(
-            'profiles.page.feedback.notifications.switchBusy',
-            2000,
-          )
-          return
-        }
-
-        if (outcome.status === 'valid') {
-          currentProfileRef.current = profile
-          void mutateLogs().catch(() => {})
-          void mutate(() => closeAllConnections(), {
-            id: 'close-all-connections',
-            errorNotice: false,
-          }).catch(() => {})
-
-          if (
-            notifySuccess &&
-            latestSwitchTargetRef.current === profile &&
-            queuedSwitchRef.current === null
-          ) {
-            showNotice.success(
-              'profiles.page.feedback.notifications.profileSwitched',
-              1000,
-            )
-          }
-          debugProfileSwitch('SWITCH_SUCCESS', profile)
-        } else {
-          debugProfileSwitch('SWITCH_REJECTED', profile, outcome)
-        }
-      } catch (err: any) {
-        console.error(`[Profile] 切换失败:`, err)
-        showNotice.error(err, 4000)
-      } finally {
-        debugProfileSwitch('SWITCH_END', profile)
-      }
-    },
-    [mutateLogs, patchProfiles],
-  )
-
-  const runProfileSwitchQueue = useCallback(async () => {
-    while (profilePageMountedRef.current && queuedSwitchRef.current) {
-      const request = queuedSwitchRef.current
-      queuedSwitchRef.current = null
-      await executeProfileSwitch(request)
-    }
-  }, [executeProfileSwitch])
-
-  const activateProfile = useCallback(
-    (profile: string, notifySuccess: boolean, force = false) => {
-      if (!profilePageMountedRef.current) return Promise.resolve()
-
-      if (
-        !force &&
-        currentProfileRef.current === profile &&
-        switchRunnerRef.current === null
-      ) {
-        debugProfileSwitch('ALREADY_CURRENT_IGNORED', profile)
-        return Promise.resolve()
-      }
-
-      if (
-        latestSwitchTargetRef.current === profile &&
-        switchRunnerRef.current
-      ) {
-        debugProfileSwitch('DUPLICATE_SWITCH_IGNORED', profile)
-        return switchRunnerRef.current
-      }
-
-      latestSwitchTargetRef.current = profile
-      queuedSwitchRef.current = { profile, notifySuccess, force }
-      setSwitchTarget(profile)
-      setVisibleSwitchingProfile(null)
-      if (switchLoadingTimerRef.current) {
-        window.clearTimeout(switchLoadingTimerRef.current)
-      }
-      switchLoadingTimerRef.current = window.setTimeout(() => {
-        if (
-          profilePageMountedRef.current &&
-          latestSwitchTargetRef.current === profile
-        ) {
-          setVisibleSwitchingProfile(profile)
-        }
-      }, PROFILE_SWITCH_LOADING_DELAY)
-
-      if (switchRunnerRef.current) {
-        debugProfileSwitch('SWITCH_QUEUED', profile)
-        return switchRunnerRef.current
-      }
-
-      const runner = runProfileSwitchQueue().finally(() => {
-        if (switchRunnerRef.current === runner) {
-          switchRunnerRef.current = null
-          latestSwitchTargetRef.current = null
-          if (switchLoadingTimerRef.current) {
-            window.clearTimeout(switchLoadingTimerRef.current)
-            switchLoadingTimerRef.current = null
-          }
-          if (profilePageMountedRef.current) {
-            setSwitchTarget(null)
-            setVisibleSwitchingProfile(null)
-          }
-        }
-      })
-      switchRunnerRef.current = runner
-      return runner
-    },
-    [runProfileSwitchQueue],
-  )
-
-  const onSelect = async (profile: string, force: boolean) => {
-    await activateProfile(profile, true, force)
-  }
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      if (current) {
-        await mutateProfiles()
-        if (cancelled) return
-        await activateProfile(current, false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [current, activateProfile, mutateProfiles])
-
-  const onEnhance = useLockFn(async (notifySuccess: boolean) => {
-    if (switchRunnerRef.current) {
-      debugLog(
-        `[Profile] 有profile正在切换中(${latestSwitchTargetRef.current})，跳过enhance操作`,
-      )
-      return
-    }
-
-    const currentProfiles = currentActivatings()
-    setActivatings((prev) => [...new Set([...prev, ...currentProfiles])])
-
-    try {
-      const result = await mutate(() => enhanceProfiles(), {
-        id: 'enhance-profiles',
-        errorNotice: false,
-      })
-      if (!(result.ok && result.value === true)) return
-      mutateLogs()
-      if (notifySuccess) {
-        showNotice.success(
-          'profiles.page.feedback.notifications.profileReactivated',
-          1000,
-        )
-      }
-    } catch (err: any) {
-      showNotice.error(err, 3000)
-    } finally {
-      setActivatings([])
-    }
-  })
-
-  const onDelete = useLockFn(async (uid: string) => {
-    const current = profiles.current === uid
-    try {
-      setActivatings([...(current ? currentActivatings() : []), uid])
-      await mutate(() => deleteProfile(uid), {
-        id: 'delete-profile',
-        errorNotice: false,
-      })
-      mutateProfiles()
-      mutateLogs()
-      if (current) {
-        await onEnhance(false)
-      }
-    } catch (err: any) {
-      showNotice.error(err)
-    } finally {
-      setActivatings([])
-    }
-  })
-
-  const loadingCache = useProfileLoadingCache()
-  const { updateRevisions: completedUpdateRevisions, timerRevisions } =
-    useProfileUpdates()
-  const setLoadingProfiles = useSetProfileLoading()
-
-  const runProfileUpdates = useCallback(
-    async (uids: string[]) => {
-      if (uids.length === 0) return
-
-      const throttleMutate = throttle(mutateProfiles, 2000, {
-        trailing: true,
-      })
-      let cursor = 0
-
-      const updateOne = async (uid: string) => {
-        try {
-          // Per-uid id: the worker pool must not dedupe distinct subscriptions.
-          await mutate(() => updateProfile(uid), {
-            id: `update-profile:${uid}`,
-            errorNotice: false,
-          })
-          throttleMutate()
-        } catch (err: any) {
-          console.error(`更新订阅 ${uid} 失败:`, err)
-        }
-      }
-
-      const worker = async () => {
-        while (cursor < uids.length) {
-          const uid = uids[cursor++]
-          await updateOne(uid)
-        }
-      }
-
-      try {
-        const active = Math.min(PROFILE_UPDATE_WORKER_LIMIT, uids.length)
-        await Promise.allSettled(Array.from({ length: active }, worker))
-      } finally {
-        setLoadingProfiles(uids, false)
-        void mutateProfiles()
-      }
-    },
-    [mutateProfiles, setLoadingProfiles],
-  )
-  const onUpdateAll = useLockFn(async () => {
-    const items = profileItems.filter((e) => e.type === 'remote')
-    const target = items
-      .map((item) => item.uid)
-      .filter((uid) => !loadingCache.has(uid))
-
-    setLoadingProfiles(target, true)
-    await runProfileUpdates(target)
-  })
-
-  const onCopyLink = async () => {
-    const text = await readText()
-    if (text) setUrl(text)
-  }
-
-  const toggleBatchMode = () => {
-    setBatchMode(!batchMode)
-    if (!batchMode) {
-      setSelectedProfiles(new Set())
-    }
-  }
-
-  const toggleProfileSelection = (uid: string) => {
-    setSelectedProfiles((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(uid)) {
-        newSet.delete(uid)
-      } else {
-        newSet.add(uid)
-      }
-      return newSet
+      setUrl('')
     })
-  }
-
-  const selectAllProfiles = () => {
-    setSelectedProfiles(new Set(profileItems.map((item) => item.uid)))
-  }
-
-  const clearAllSelections = () => {
-    setSelectedProfiles(new Set())
-  }
-
-  const isAllSelected = () => {
-    return (
-      profileItems.length > 0 && profileItems.length === selectedProfiles.size
-    )
-  }
-
-  const getSelectionState = () => {
-    if (selectedProfiles.size === 0) {
-      return 'none'
-    } else if (selectedProfiles.size === profileItems.length) {
-      return 'all'
-    } else {
-      return 'partial'
-    }
-  }
-
-  const deleteSelectedProfiles = useLockFn(async () => {
-    if (selectedProfiles.size === 0) return
-
-    try {
-      const currentActivating =
-        profiles.current && selectedProfiles.has(profiles.current)
-          ? [profiles.current]
-          : []
-
-      setActivatings((prev) => [...new Set([...prev, ...currentActivating])])
-
-      for (const uid of selectedProfiles) {
-        await mutate(() => deleteProfile(uid), {
-          id: 'delete-profile',
-          errorNotice: false,
-        })
-      }
-
-      await mutateProfiles()
-      await mutateLogs()
-
-      if (currentActivating.length > 0) {
-        await onEnhance(false)
-      }
-
-      setSelectedProfiles(new Set())
-      setBatchMode(false)
-
-      showNotice.success('profiles.page.feedback.notifications.batchDeleted')
-    } catch (err: any) {
-      showNotice.error(err)
-    } finally {
-      setActivatings([])
-    }
-  })
-
-  const mode = useThemeMode()
-  const isLight = mode === 'light'
-  const dividercolor = isLight
-    ? 'rgba(0, 0, 0, 0.06)'
-    : 'rgba(255, 255, 255, 0.06)'
-
-  // 卸载后不再执行尚未发送的切换意图。
-  useEffect(() => {
-    profilePageMountedRef.current = true
-    return () => {
-      profilePageMountedRef.current = false
-      queuedSwitchRef.current = null
-      latestSwitchTargetRef.current = null
-      if (switchLoadingTimerRef.current) {
-        window.clearTimeout(switchLoadingTimerRef.current)
-        switchLoadingTimerRef.current = null
-      }
-    }
-  }, [])
-
   return (
-    <BasePage
-      full
-      title={t('profiles.page.title')}
-      contentStyle={{ height: '100%' }}
-      header={
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {!batchMode ? (
-            <>
-              {/* Batch mode toggle button */}
-              <IconButton
-                size="small"
-                color="inherit"
-                title={t('profiles.page.batch.title')}
-                onClick={toggleBatchMode}
-              >
-                <CheckBoxOutlineBlankRounded />
-              </IconButton>
-
-              <IconButton
-                size="small"
-                color="inherit"
-                title={t('profiles.page.actions.updateAll')}
-                onClick={onUpdateAll}
-              >
-                <RefreshRounded />
-              </IconButton>
-
-              <IconButton
-                size="small"
-                color="inherit"
-                title={t('profiles.page.actions.viewRuntimeConfig')}
-                onClick={() => configRef.current?.open()}
-              >
-                <TextSnippetOutlined />
-              </IconButton>
-
-              <IconButton
-                size="small"
-                color="primary"
-                title={t('profiles.page.actions.reactivate')}
-                onClick={() => onEnhance(true)}
-              >
-                <LocalFireDepartmentRounded />
-              </IconButton>
-
-              {/* 故障检测和紧急恢复按钮 */}
-              {(error || isStale) && (
-                <IconButton
-                  size="small"
-                  color="warning"
-                  title={t(
-                    'profiles.page.feedback.tooltips.forceRefreshStaleData',
-                  )}
-                  onClick={onEmergencyRefresh}
-                  sx={{
-                    animation: 'pulse 2s infinite',
-                    '@keyframes pulse': {
-                      '0%': { opacity: 1 },
-                      '50%': { opacity: 0.5 },
-                      '100%': { opacity: 1 },
-                    },
-                  }}
-                >
-                  <ClearRounded />
-                </IconButton>
-              )}
-            </>
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <IconButton
-                size="small"
-                color="inherit"
-                title={
-                  isAllSelected()
-                    ? t('profiles.page.batch.actions.deselectAll')
-                    : t('profiles.page.batch.actions.selectAll')
-                }
-                onClick={
-                  isAllSelected() ? clearAllSelections : selectAllProfiles
-                }
-              >
-                {getSelectionState() === 'all' ? (
-                  <CheckBoxRounded />
-                ) : getSelectionState() === 'partial' ? (
-                  <IndeterminateCheckBoxRounded />
-                ) : (
-                  <CheckBoxOutlineBlankRounded />
-                )}
-              </IconButton>
-              <IconButton
-                size="small"
-                color="error"
-                title={t('profiles.page.batch.actions.delete')}
-                onClick={deleteSelectedProfiles}
-                disabled={selectedProfiles.size === 0}
-              >
-                <DeleteRounded />
-              </IconButton>
-              <Button size="small" variant="outlined" onClick={toggleBatchMode}>
-                {t('profiles.page.batch.actions.done')}
-              </Button>
-              <Box
-                sx={{ flex: 1, textAlign: 'right', color: 'text.secondary' }}
-              >
-                {t('profiles.page.batch.summary.selected')}{' '}
-                {selectedProfiles.size} {t('profiles.page.batch.summary.items')}
-              </Box>
-            </Box>
-          )}
-        </Box>
-      }
-    >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{
-          pt: 1,
-          mb: 0.5,
-          mx: '10px',
-          height: '36px',
-          display: 'flex',
-          alignItems: 'center',
-        }}
-      >
-        <BaseStyledTextField
-          value={url}
-          variant="outlined"
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' || event.nativeEvent.isComposing) {
-              return
-            }
-            if (!url || disabled || loading) {
-              return
-            }
+    <BasePage title={t('settings.minimal.subscriptionsTitle')}>
+      <Stack spacing={2.5}>
+        <Typography color="text.secondary" variant="body2">
+          {t('settings.minimal.subscriptionsHint')}
+        </Typography>
+        <Box
+          component="form"
+          className="essential-card"
+          onSubmit={(event) => {
             event.preventDefault()
-            void onImport()
+            if (isValidUrl(url.trim()) && !busy) void add()
           }}
-          placeholder={t('profiles.page.importForm.placeholder')}
-          slotProps={{
-            input: {
-              sx: { pr: 1 },
-              endAdornment: !url ? (
-                <IconButton
-                  size="small"
-                  sx={{ p: 0.5 }}
-                  title={t('profiles.page.importForm.actions.paste')}
-                  onClick={onCopyLink}
-                >
-                  <ContentPasteRounded fontSize="inherit" />
-                </IconButton>
-              ) : (
-                <IconButton
-                  size="small"
-                  sx={{ p: 0.5 }}
-                  title={t('shared.actions.clear')}
-                  onClick={() => setUrl('')}
-                >
-                  <ClearRounded fontSize="inherit" />
-                </IconButton>
-              ),
-            },
-          }}
-        />
-        <Button
-          disabled={!url || disabled}
-          loading={loading}
-          variant="contained"
-          size="small"
-          sx={{ borderRadius: '6px' }}
-          onClick={onImport}
+          sx={{ bgcolor: 'background.paper', p: 2.5 }}
         >
-          {t('profiles.page.actions.import')}
-        </Button>
-        <Button
-          variant="contained"
-          size="small"
-          sx={{ borderRadius: '6px' }}
-          onClick={() => viewerRef.current?.create()}
-        >
-          {t('shared.actions.new')}
-        </Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <TextField
+              size="small"
+              type="url"
+              fullWidth
+              label={t('settings.minimal.subscriptionUrl')}
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              disabled={busy}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={busy || !isValidUrl(url.trim())}
+              sx={{ minWidth: 90 }}
+            >
+              {t('settings.minimal.import')}
+            </Button>
+          </Stack>
+        </Box>
+        {error && (
+          <Alert severity="warning">{t('settings.minimal.readError')}</Alert>
+        )}
+        {busy && <LinearProgress />}
+        {!items.length && (
+          <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
+            {t('settings.minimal.noSubscription')}
+          </Box>
+        )}
+        {items.map((profile) => {
+          const active = profiles?.current === profile.uid
+          const loading = busy || updating.has(profile.uid)
+          return (
+            <Box
+              key={profile.uid}
+              className="essential-card"
+              sx={{ bgcolor: 'background.paper', p: 2.5 }}
+            >
+              <Stack
+                direction="row"
+                sx={{
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 2,
+                }}
+              >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: 'center' }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 16,
+                        fontWeight: 650,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {profile.name ?? profile.uid}
+                    </Typography>
+                    {active && (
+                      <Chip
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        icon={<CheckCircleRounded />}
+                        label={t('settings.minimal.active')}
+                      />
+                    )}
+                  </Stack>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', mt: 0.75 }}
+                  >
+                    {profile.updated
+                      ? new Date(profile.updated * 1000).toLocaleString()
+                      : t('settings.minimal.notUpdated')}
+                  </Typography>
+                  {profile.extra && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {(
+                        (profile.extra.upload + profile.extra.download) /
+                        1073741824
+                      ).toFixed(1)}{' '}
+                      / {(profile.extra.total / 1073741824).toFixed(1)} GB
+                      {profile.extra.expire > 0
+                        ? ` · ${t('settings.minimal.expires')} ${new Date(profile.extra.expire * 1000).toLocaleDateString()}`
+                        : ''}
+                    </Typography>
+                  )}
+                </Box>
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{ alignItems: 'center' }}
+                >
+                  {profile.type === 'remote' && (
+                    <IconButton
+                      aria-label={`${t('settings.minimal.refresh')} ${profile.name ?? ''}`}
+                      disabled={loading}
+                      onClick={() =>
+                        run(() =>
+                          mutate(() => updateProfile(profile.uid), {
+                            id: `update-profile:${profile.uid}`,
+                            errorNotice: false,
+                          }),
+                        )
+                      }
+                    >
+                      {updating.has(profile.uid) ? (
+                        <CircularProgress size={20} />
+                      ) : (
+                        <RefreshRounded />
+                      )}
+                    </IconButton>
+                  )}
+                  <IconButton
+                    aria-label={`${t('settings.minimal.delete')} ${profile.name ?? ''}`}
+                    disabled={loading}
+                    onClick={() => setDeleting(profile)}
+                  >
+                    <DeleteOutlineRounded />
+                  </IconButton>
+                  <Button
+                    variant={active ? 'text' : 'outlined'}
+                    disabled={active || loading}
+                    onClick={() => activate(profile.uid)}
+                  >
+                    {active
+                      ? t('settings.minimal.active')
+                      : t('settings.minimal.use')}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Box>
+          )
+        })}
       </Stack>
-
-      <Box
-        sx={{
-          pl: '10px',
-          pr: '10px',
-          height: 'calc(100% - 48px)',
-          overflowY: 'auto',
+      <Dialog
+        open={Boolean(deleting)}
+        onClose={() => {
+          if (!busy) setDeleting(null)
         }}
       >
-        <DragDropProvider
-          key={profileDndRevision}
-          sensors={[profilePointerSensor, KeyboardSensor]}
-          onDragEnd={onDragEnd}
-        >
-          <Box
-            sx={{
-              mb: 1.5,
-              display: 'grid',
-              overflow: 'hidden',
-              // Up to 4 columns until a column would pass 480px, then more; 24px is the 3 gaps from `gap: 1`.
-              gridTemplateColumns:
-                'repeat(auto-fill, minmax(clamp(260px, calc((100% - 24px) / 4), 480px), 1fr))',
-              gap: 1,
-              px: 0.5,
+        <DialogTitle>{t('settings.minimal.deleteSubscription')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t('settings.minimal.deleteHint', {
+              name: deleting?.name ?? deleting?.uid,
+            })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={busy} onClick={() => setDeleting(null)}>
+            {t('shared.actions.cancel')}
+          </Button>
+          <Button
+            disabled={busy}
+            color="error"
+            onClick={() => {
+              if (!deleting) return
+              void run(async () => {
+                await mutate(() => deleteProfile(deleting.uid), {
+                  id: `delete-profile:${deleting.uid}`,
+                  errorNotice: false,
+                })
+                setDeleting(null)
+              })
             }}
           >
-            {profileItems.map((item, index) => (
-              <ProfileItem
-                key={item.uid}
-                id={item.uid}
-                index={index}
-                selected={(switchTarget ?? profiles.current) === item.uid}
-                activating={
-                  activatings.includes(item.uid) ||
-                  visibleSwitchingProfile === item.uid
-                }
-                itemData={item}
-                timerUpdateRevision={timerRevisions.get(item.uid) ?? 0}
-                completedUpdateRevision={
-                  completedUpdateRevisions.get(item.uid) ?? 0
-                }
-                mutateProfiles={mutateProfiles}
-                onSelect={(f) => onSelect(item.uid, f)}
-                onEdit={() => viewerRef.current?.edit(item)}
-                onSave={async (prev, curr) => {
-                  if (prev !== curr && profiles.current === item.uid) {
-                    await onEnhance(false)
-                  }
-                }}
-                onDelete={() => {
-                  if (batchMode) {
-                    toggleProfileSelection(item.uid)
-                  } else {
-                    onDelete(item.uid)
-                  }
-                }}
-                batchMode={batchMode}
-                isSelected={selectedProfiles.has(item.uid)}
-                onSelectionChange={() => toggleProfileSelection(item.uid)}
-              />
-            ))}
-          </Box>
-        </DragDropProvider>
-        <Divider
-          variant="middle"
-          flexItem
-          sx={{ width: `calc(100% - 32px)`, borderColor: dividercolor }}
-        ></Divider>
-        <Box sx={{ mt: 1.5, mb: '10px' }}>
-          <Grid container spacing={{ xs: 1, lg: 1 }}>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-              <ProfileMore
-                id="Merge"
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance(false)
-                  }
-                }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 6, lg: 6 }}>
-              <ProfileMore
-                id="Script"
-                logInfo={chainLogs['Script']}
-                onSave={async (prev, curr) => {
-                  if (prev !== curr) {
-                    await onEnhance(false)
-                  }
-                }}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      </Box>
-
-      <ProfileViewer
-        ref={viewerRef}
-        onChange={async (isActivating) => {
-          mutateProfiles()
-          if (isActivating) {
-            await onEnhance(false)
-          }
-        }}
-      />
-      <ConfigViewer ref={configRef} />
+            {t('settings.minimal.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </BasePage>
   )
 }

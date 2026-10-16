@@ -30,7 +30,6 @@ import {
   Switch,
   TooltipIcon,
 } from '@/components/base'
-import { EditorViewer } from '@/components/profile/editor-viewer'
 import { useDisplayedMixedPort } from '@/hooks/use-displayed-mixed-port'
 import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
 import { useVerge } from '@/hooks/use-verge'
@@ -96,7 +95,6 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
   const [open, setOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
   const [pacEditorValue, setPacEditorValue] = useState(DEFAULT_PAC)
-  const [pacEditorSavedValue, setPacEditorSavedValue] = useState(DEFAULT_PAC)
   const [saving, setSaving] = useState(false)
   const { verge, patchVerge, mutateVerge } = useVerge()
   const [hostOptions, setHostOptions] = useState<string[]>([])
@@ -177,7 +175,6 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
   const openPacEditor = () => {
     const nextPac = value.pac_content ?? DEFAULT_PAC
     setPacEditorValue(nextPac)
-    setPacEditorSavedValue(nextPac)
     setEditorOpen(true)
   }
 
@@ -186,7 +183,6 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
       pacEditorValue.trim().length > 0 ? pacEditorValue : DEFAULT_PAC
 
     setValue((current) => ({ ...current, pac_content: nextPac }))
-    setPacEditorSavedValue(nextPac)
   })
 
   useImperativeHandle(ref, () => ({
@@ -583,19 +579,31 @@ export const SysproxyViewer = forwardRef<DialogRef>((props, ref) => {
             >
               {t('settings.modals.sysproxy.actions.editPac')}
             </Button>
-            {editorOpen && (
-              <EditorViewer
-                open={true}
-                title={t('settings.modals.sysproxy.actions.editPac')}
+            <BaseDialog
+              open={editorOpen}
+              title={t('settings.modals.sysproxy.actions.editPac')}
+              okBtn={t('shared.actions.save')}
+              cancelBtn={t('shared.actions.cancel')}
+              onClose={() => setEditorOpen(false)}
+              onCancel={() => setEditorOpen(false)}
+              onOk={() => {
+                void handleSavePac()
+                setEditorOpen(false)
+              }}
+              contentSx={{ width: 'min(560px, 75vw)' }}
+            >
+              <TextField
+                multiline
+                minRows={12}
+                maxRows={20}
+                fullWidth
                 value={pacEditorValue}
-                language="javascript"
-                path="sysproxy-pac.js"
-                dirty={pacEditorValue !== pacEditorSavedValue}
-                onChange={setPacEditorValue}
-                onSave={handleSavePac}
-                onClose={() => setEditorOpen(false)}
+                onChange={(event) => setPacEditorValue(event.target.value)}
+                slotProps={{
+                  htmlInput: { spellCheck: false, 'aria-label': 'PAC' },
+                }}
               />
-            )}
+            </BaseDialog>
           </ListItem>
         )}
       </List>

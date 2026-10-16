@@ -1,9 +1,5 @@
 import React, { useCallback, useMemo, useRef } from 'react'
-import {
-  getBaseConfig,
-  getRuleProviders,
-  getRules,
-} from 'tauri-plugin-mihomo-api'
+import { getBaseConfig } from 'tauri-plugin-mihomo-api'
 
 import { useClashInfo, useRuntimeConfig } from '@/hooks/use-clash'
 import { useVerge } from '@/hooks/use-verge'
@@ -17,7 +13,6 @@ import {
   CoreDataStatusContext,
   ProxiesContext,
   RefreshersContext,
-  RulesContext,
   SystemContext,
 } from './app-data-context'
 
@@ -75,19 +70,6 @@ export const AppDataProvider = ({
     ...TQ_MIHOMO,
   })
 
-  const { data: ruleProviders, refetch: _refetchRuleProviders } = useQuery({
-    queryKey: ['getRuleProviders'],
-    queryFn: getRuleProviders,
-    ...TQ_MIHOMO,
-    revalidateOnMount: false,
-  })
-
-  const { data: rulesData, refetch: _refetchRules } = useQuery({
-    queryKey: ['getRules'],
-    queryFn: getRules,
-    ...TQ_MIHOMO,
-  })
-
   const { data: sysproxy, refetch: _refetchSysproxy } = useQuery({
     queryKey: ['getSystemProxy'],
     queryFn: getSystemProxy,
@@ -101,25 +83,11 @@ export const AppDataProvider = ({
 
   const refreshProxy = useStableFn(_refetchProxyView)
   const refreshClashConfig = useStableFn(_refetchClashConfig)
-  const refreshRules = useStableFn(_refetchRules)
   const refreshSysproxy = useStableFn(_refetchSysproxy)
-  const refreshRuleProviders = useStableFn(_refetchRuleProviders)
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([
-      refreshProxy(),
-      refreshClashConfig(),
-      refreshRules(),
-      refreshSysproxy(),
-      refreshRuleProviders(),
-    ])
-  }, [
-    refreshProxy,
-    refreshClashConfig,
-    refreshRules,
-    refreshSysproxy,
-    refreshRuleProviders,
-  ])
+    await Promise.all([refreshProxy(), refreshClashConfig(), refreshSysproxy()])
+  }, [refreshProxy, refreshClashConfig, refreshSysproxy])
 
   const proxiesValue = useMemo(
     () => ({
@@ -128,14 +96,6 @@ export const AppDataProvider = ({
       isProxyViewError: Boolean(proxyViewError),
     }),
     [proxyView, isProxyViewPending, proxyViewError],
-  )
-
-  const rulesValue = useMemo(
-    () => ({
-      rules: rulesData?.rules ?? [],
-      ruleProviders: ruleProviders?.providers || {},
-    }),
-    [rulesData, ruleProviders],
   )
 
   const clashConfigValue = useMemo(
@@ -201,34 +161,23 @@ export const AppDataProvider = ({
     () => ({
       refreshProxy,
       refreshClashConfig,
-      refreshRules,
       refreshSysproxy,
-      refreshRuleProviders,
       refreshAll,
     }),
-    [
-      refreshProxy,
-      refreshClashConfig,
-      refreshRules,
-      refreshSysproxy,
-      refreshRuleProviders,
-      refreshAll,
-    ],
+    [refreshProxy, refreshClashConfig, refreshSysproxy, refreshAll],
   )
 
   return (
     <ProxiesContext value={proxiesValue}>
-      <RulesContext value={rulesValue}>
-        <ClashConfigContext value={clashConfigValue}>
-          <SystemContext value={systemValue}>
-            <CoreDataStatusContext value={coreDataStatusValue}>
-              <RefreshersContext value={refreshersValue}>
-                {children}
-              </RefreshersContext>
-            </CoreDataStatusContext>
-          </SystemContext>
-        </ClashConfigContext>
-      </RulesContext>
+      <ClashConfigContext value={clashConfigValue}>
+        <SystemContext value={systemValue}>
+          <CoreDataStatusContext value={coreDataStatusValue}>
+            <RefreshersContext value={refreshersValue}>
+              {children}
+            </RefreshersContext>
+          </CoreDataStatusContext>
+        </SystemContext>
+      </ClashConfigContext>
     </ProxiesContext>
   )
 }

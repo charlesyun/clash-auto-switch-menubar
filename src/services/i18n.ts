@@ -84,15 +84,10 @@ type LocaleModule = {
 
 const STARTUP_LANGUAGE_SECTIONS = [
   'layout',
-  'home',
   'shared',
   'settings',
   'profiles',
   'proxies',
-  'tests',
-  'rules',
-  'connections',
-  'logs',
 ] as const
 
 const localeModules = import.meta.glob<LocaleModule>('@/locales/*/*.json')

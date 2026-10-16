@@ -1,204 +1,151 @@
-import { LanOutlined, LanRounded, WarningRounded } from '@mui/icons-material'
-import { Box, Button, ButtonGroup } from '@mui/material'
-import { useLockFn } from 'ahooks'
-import { useCallback, useEffect, useReducer, useState } from 'react'
+import { PublicRounded, RefreshRounded } from '@mui/icons-material'
+import {
+  Alert,
+  Box,
+  Chip,
+  IconButton,
+  MenuItem,
+  Select,
+  Stack,
+  Typography,
+} from '@mui/material'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { BasePage, TooltipIcon } from '@/components/base'
-import { ProviderButton } from '@/components/proxy/provider-button'
-import { ProxyGroups } from '@/components/proxy/proxy-groups'
+import { BasePage } from '@/components/base'
+import { NodeList } from '@/components/proxy/node-list'
+import { visibleGroups } from '@/components/proxy/node-list-model'
+import SettingAutoSwitch from '@/components/setting/setting-auto-switch'
+import ProxyControlSwitches from '@/components/shared/proxy-control-switches'
+import { useProfiles } from '@/hooks/use-profiles'
 import {
   useAppRefreshers,
   useClashConfigData,
+  useProxiesData,
 } from '@/providers/app-data-context'
-import {
-  getRuntimeProxyChainConfig,
-  patchClashMode,
-  updateProxyChainConfigInRuntime,
-} from '@/services/cmds'
+import { patchClashMode } from '@/services/cmds'
 import { mutate } from '@/services/mutate'
 import { showNotice } from '@/services/notice-service'
-import { debugLog } from '@/utils/debug'
-
-const MODES = ['rule', 'global', 'direct'] as const
-type Mode = (typeof MODES)[number]
-const MODE_SET = new Set<string>(MODES)
-const isMode = (value: unknown): value is Mode =>
-  typeof value === 'string' && MODE_SET.has(value)
 
 const ProxyPage = () => {
   const { t } = useTranslation()
-
-  // 从 localStorage 恢复链式代理按钮状态
-  const [isChainMode, setIsChainMode] = useState(() => {
-    try {
-      const saved = localStorage.getItem('proxy-chain-mode-enabled')
-      return saved === 'true'
-    } catch {
-      return false
-    }
-  })
-
-  const [chainConfigData, dispatchChainConfigData] = useReducer(
-    (_: string | null, action: string | null) => action,
-    null as string | null,
-  )
-
+  const { current } = useProfiles()
+  const { proxyView, isProxyViewError } = useProxiesData()
   const { clashConfig } = useClashConfigData()
-  const { refreshClashConfig } = useAppRefreshers()
-
-  const updateChainConfigData = useCallback((value: string | null) => {
-    dispatchChainConfigData(value)
-  }, [])
-
-  const normalizedMode = clashConfig?.mode?.toLowerCase()
-  const curMode = isMode(normalizedMode) ? normalizedMode : undefined
-  const chainWarning = t('proxies.page.chain.warning')
-
-  const onChangeMode = useLockFn(async (mode: Mode) => {
+  const { refreshProxy, refreshClashConfig } = useAppRefreshers()
+  const [changingMode, setChangingMode] = useState(false)
+  const mode = clashConfig?.mode ?? 'rule'
+  const group = visibleGroups(proxyView, mode)[0]
+  let selected = group?.now
+  const visited = new Set<string>()
+  while (selected && !visited.has(selected)) {
+    visited.add(selected)
+    const nested = proxyView?.groups.find((item) => item.name === selected)
+    if (!nested?.now) break
+    selected = nested.now
+  }
+  const changeMode = async (next: string) => {
+    setChangingMode(true)
     try {
-      // patchClashMode 在后端 PATCH 失败时会 reject，需提示用户而非静默失败
-      await mutate(() => patchClashMode(mode), {
+      await mutate(() => patchClashMode(next), {
         id: 'patch-clash-mode',
         errorNotice: false,
       })
-      refreshClashConfig()
+      await Promise.all([refreshClashConfig(), refreshProxy()])
     } catch (error) {
       showNotice.error(error)
+    } finally {
+      setChangingMode(false)
     }
-  })
-
-  const onToggleChainMode = useLockFn(async () => {
-    const newChainMode = !isChainMode
-
-    setIsChainMode(newChainMode)
-    // 保存链式代理按钮状态到 localStorage
-    localStorage.setItem('proxy-chain-mode-enabled', newChainMode.toString())
-
-    if (!newChainMode) {
-      // 退出链式代理模式时，清除链式代理配置
-      try {
-        debugLog('Exiting chain mode, clearing chain configuration')
-        await mutate(() => updateProxyChainConfigInRuntime(null), {
-          id: 'update-proxy-chain-runtime',
-          errorNotice: false,
-        })
-        debugLog('Chain configuration cleared successfully')
-      } catch (error) {
-        console.error('Failed to clear chain configuration:', error)
-      }
-    }
-  })
-
-  // 当开启链式代理模式时，获取配置数据
-  useEffect(() => {
-    if (!isChainMode) {
-      updateChainConfigData(null)
-      return
-    }
-
-    let cancelled = false
-
-    const fetchChainConfig = async () => {
-      try {
-        const exitNode = localStorage.getItem('proxy-chain-exit-node')
-
-        if (!exitNode) {
-          console.error('No proxy chain exit node found in localStorage')
-          if (!cancelled) {
-            updateChainConfigData('')
-          }
-          return
-        }
-
-        const configData = await getRuntimeProxyChainConfig(exitNode)
-        if (!cancelled) {
-          updateChainConfigData(configData || '')
-        }
-      } catch (error) {
-        console.error('Failed to get runtime proxy chain config:', error)
-        if (!cancelled) {
-          updateChainConfigData('')
-        }
-      }
-    }
-
-    fetchChainConfig()
-
-    return () => {
-      cancelled = true
-    }
-  }, [isChainMode, updateChainConfigData])
-
-  useEffect(() => {
-    if (normalizedMode && !isMode(normalizedMode)) {
-      onChangeMode('rule')
-    }
-  }, [normalizedMode, onChangeMode])
-
+  }
   return (
     <BasePage
-      full
-      contentStyle={{ height: '100%' }}
-      title={
-        isChainMode ? (
-          <Box
-            component="span"
-            data-tauri-drag-region="true"
-            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}
-          >
-            {t('proxies.page.title.chainMode')}
-            <TooltipIcon
-              title={chainWarning}
-              icon={WarningRounded}
-              color="warning"
-              sx={{ p: 0.25 }}
-            />
-          </Box>
-        ) : (
-          t('proxies.page.title.default')
-        )
-      }
+      title={t('settings.minimal.proxyTitle')}
       header={
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ProviderButton />
-
-          <ButtonGroup size="small">
-            {MODES.map((mode) => (
-              <Button
-                key={mode}
-                variant={mode === curMode ? 'contained' : 'outlined'}
-                onClick={() => onChangeMode(mode)}
-                sx={{ textTransform: 'capitalize' }}
-              >
-                {t(`proxies.page.modes.${mode}`)}
-              </Button>
-            ))}
-          </ButtonGroup>
-
-          <Button
-            size="small"
-            variant={isChainMode ? 'contained' : 'outlined'}
-            onClick={onToggleChainMode}
-            sx={{ ml: 1 }}
-            startIcon={
-              isChainMode ? (
-                <LanRounded fontSize="small" />
-              ) : (
-                <LanOutlined fontSize="small" />
-              )
-            }
+        <Stack direction="row" spacing={1}>
+          <IconButton
+            aria-label={t('settings.minimal.refresh')}
+            onClick={() => {
+              void refreshProxy()
+            }}
           >
-            {t('proxies.page.actions.toggleChain')}
-          </Button>
-        </Box>
+            <RefreshRounded />
+          </IconButton>
+          <Select
+            size="small"
+            value={mode}
+            disabled={changingMode}
+            onChange={(event) => changeMode(event.target.value)}
+            inputProps={{ 'aria-label': t('settings.minimal.mode') }}
+          >
+            <MenuItem value="rule">{t('settings.minimal.rule')}</MenuItem>
+            <MenuItem value="global">{t('settings.minimal.global')}</MenuItem>
+            <MenuItem value="direct">{t('settings.minimal.direct')}</MenuItem>
+          </Select>
+        </Stack>
       }
     >
-      <ProxyGroups
-        mode={curMode ?? 'rule'}
-        isChainMode={isChainMode}
-        chainConfigData={chainConfigData}
-      />
+      <Stack spacing={2.5}>
+        {isProxyViewError && (
+          <Alert severity="warning">{t('settings.minimal.readError')}</Alert>
+        )}
+        <Box
+          className="essential-card"
+          sx={{ bgcolor: 'background.paper', p: 2.5 }}
+        >
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2.5}
+            sx={{ justifyContent: 'space-between' }}
+          >
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: 'center', mb: 1.5 }}
+              >
+                <PublicRounded color="primary" />
+                <Typography color="text.secondary" variant="body2">
+                  {t('settings.minimal.currentNode')}
+                </Typography>
+              </Stack>
+              <Typography
+                sx={{
+                  fontWeight: 650,
+                  fontSize: 22,
+                  overflowWrap: 'anywhere',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {mode === 'direct'
+                  ? t('settings.minimal.direct')
+                  : (selected ?? t('settings.minimal.noSelection'))}
+              </Typography>
+              <Chip
+                sx={{ mt: 1.5 }}
+                size="small"
+                label={current?.name ?? t('settings.minimal.noSubscription')}
+                variant="outlined"
+              />
+            </Box>
+            <Box sx={{ minWidth: { md: 230 } }}>
+              <ProxyControlSwitches onError={showNotice.error} noRightPadding />
+              <ProxyControlSwitches
+                label={t('settings.sections.system.toggles.tunMode')}
+                onError={showNotice.error}
+                noRightPadding
+              />
+            </Box>
+          </Stack>
+        </Box>
+        <Box
+          className="essential-card"
+          sx={{ bgcolor: 'background.paper', px: 1, pb: 1 }}
+        >
+          <SettingAutoSwitch mode="controls" />
+        </Box>
+        <NodeList />
+      </Stack>
     </BasePage>
   )
 }

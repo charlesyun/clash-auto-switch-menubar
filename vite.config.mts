@@ -31,8 +31,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve('./src'),
       '@root': path.resolve('.'),
-      'monaco-editor/esm/vs/editor/editor.worker.js':
-        'monaco-editor/editor/editor.worker',
     },
   },
   define: {

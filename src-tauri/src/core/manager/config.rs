@@ -306,24 +306,6 @@ impl CoreManager {
         self.validate_and_apply(transaction).await
     }
 
-    pub(crate) async fn update_runtime_config<F>(&self, f: F) -> Result<ValidationOutcome>
-    where
-        F: FnOnce(&mut IRuntime),
-    {
-        if !self.try_start_config_update() {
-            logging!(debug, Type::Core, "Configuration update is already running");
-            return Ok(ValidationOutcome::Busy);
-        }
-        defer! {
-            self.finish_config_update();
-        }
-
-        let runtime = Config::runtime().await;
-        let transaction = DraftTransaction::begin(vec![&runtime])?;
-        runtime.edit_draft(f);
-        self.validate_and_apply(transaction).await
-    }
-
     /// Commits the applied runtime even if restoring the system proxy subsequently fails.
     async fn validate_and_apply(&self, transaction: DraftTransaction<'_>) -> Result<ValidationOutcome> {
         let runtime = Config::runtime().await;

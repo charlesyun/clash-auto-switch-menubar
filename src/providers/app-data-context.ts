@@ -1,5 +1,5 @@
 import { Context, createContext, use } from 'react'
-import { BaseConfig, Rule, RuleProvider } from 'tauri-plugin-mihomo-api'
+import { BaseConfig } from 'tauri-plugin-mihomo-api'
 
 import type { ProxyViewV1 } from '@/types/proxy-view'
 
@@ -7,11 +7,6 @@ export interface ProxiesContextType {
   proxyView: ProxyViewV1 | undefined
   isProxyViewPending: boolean
   isProxyViewError: boolean
-}
-
-export interface RulesContextType {
-  rules: Rule[]
-  ruleProviders: Record<string, RuleProvider | undefined>
 }
 
 export interface ClashConfigContextType {
@@ -33,14 +28,11 @@ export interface CoreDataStatusContextType {
 export interface RefreshersContextType {
   refreshProxy: () => Promise<unknown>
   refreshClashConfig: () => Promise<unknown>
-  refreshRules: () => Promise<unknown>
   refreshSysproxy: () => Promise<unknown>
-  refreshRuleProviders: () => Promise<unknown>
   refreshAll: () => Promise<unknown>
 }
 
 export const ProxiesContext = createContext<ProxiesContextType | null>(null)
-export const RulesContext = createContext<RulesContextType | null>(null)
 export const ClashConfigContext = createContext<ClashConfigContextType | null>(
   null,
 )
@@ -59,15 +51,6 @@ const useCtx = <T>(ctx: Context<T | null>, hookName: string): T => {
 
 export const useProxiesData = (): ProxiesContextType =>
   useCtx(ProxiesContext, 'useProxiesData')
-
-export const useRulesData = () => {
-  const { rules, ruleProviders } = useCtx(RulesContext, 'useRulesData')
-
-  return {
-    rules,
-    ruleProviders: ruleProviders as Record<string, RuleProvider>,
-  }
-}
 
 export const useClashConfigData = (): ClashConfigContextType =>
   useCtx(ClashConfigContext, 'useClashConfigData')

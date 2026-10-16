@@ -101,18 +101,6 @@ export async function getRuntimeLogs() {
   return invoke<Record<string, [string, string][]>>('get_runtime_logs')
 }
 
-export async function getRuntimeProxyChainConfig(proxyChainExitNode: string) {
-  return invoke<string>('get_runtime_proxy_chain_config', {
-    proxyChainExitNode,
-  })
-}
-
-export async function updateProxyChainConfigInRuntime(proxyChainConfig: any) {
-  return invoke<void>('update_proxy_chain_config_in_runtime', {
-    proxyChainConfig,
-  })
-}
-
 export async function patchClashConfig(payload: Partial<IConfigData>) {
   return invoke<void>('patch_clash_config', { payload })
 }
@@ -392,24 +380,12 @@ export async function getNetworkInterfacesInfo() {
   return invoke<INetworkInterface[]>('get_network_interfaces_info')
 }
 
-export async function createWebdavBackup() {
-  return invoke<void>('create_webdav_backup')
-}
-
 export async function createLocalBackup() {
   return invoke<void>('create_local_backup')
 }
 
-export async function deleteWebdavBackup(filename: string) {
-  return invoke<void>('delete_webdav_backup', { filename })
-}
-
 export async function deleteLocalBackup(filename: string) {
   return invoke<void>('delete_local_backup', { filename })
-}
-
-export async function restoreWebDavBackup(filename: string) {
-  return invoke<void>('restore_webdav_backup', { filename })
 }
 
 export async function restoreLocalBackup(filename: string) {
@@ -422,26 +398,6 @@ export async function importLocalBackup(source: string) {
 
 export async function exportLocalBackup(filename: string, destination: string) {
   return invoke<void>('export_local_backup', { filename, destination })
-}
-
-export async function saveWebdavConfig(
-  url: string,
-  username: string,
-  password: string,
-) {
-  return invoke<void>('save_webdav_config', {
-    url,
-    username,
-    password,
-  })
-}
-
-export async function listWebDavBackup() {
-  const list: IWebDavFile[] = await invoke<IWebDavFile[]>('list_webdav_backup')
-  list.forEach((item) => {
-    item.filename = item.href.split('/').pop() as string
-  })
-  return list
 }
 
 export async function listLocalBackup() {
@@ -583,25 +539,6 @@ export const probeListener = async (request: ListenerProbe) => {
 
 export const saveProxyPorts = async (settings: ProxyPortSettings) => {
   return invoke<SaveProxyPortsOutcome>('save_proxy_ports', { settings })
-}
-
-export interface UnlockItem {
-  name: string
-  status: string
-  region?: string | null
-  check_time?: string | null
-}
-
-export async function getUnlockItems() {
-  return invoke<UnlockItem[]>('get_unlock_items')
-}
-
-export async function checkMediaUnlock(onComplete: Channel<UnlockItem>) {
-  return invoke<UnlockItem[]>('check_media_unlock', { onComplete })
-}
-
-export async function checkMediaUnlockItem(name: string) {
-  return invoke<UnlockItem>('check_media_unlock_item', { name })
 }
 
 export interface AutoSwitchStatus {

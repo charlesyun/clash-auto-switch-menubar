@@ -3,196 +3,6 @@
 
 export interface TranslationResources {
   translation: {
-    connections: {
-      components: {
-        actions: {
-          active: string
-          closeConnection: string
-          closed: string
-        }
-        columnManager: {
-          dragHandle: string
-          title: string
-        }
-        fields: {
-          chains: string
-          destination: string
-          destinationPort: string
-          dlSpeed: string
-          host: string
-          process: string
-          rule: string
-          source: string
-          time: string
-          type: string
-          ulSpeed: string
-        }
-        order: {
-          default: string
-          downloadSpeed: string
-          uploadSpeed: string
-        }
-      }
-      page: {
-        title: string
-      }
-    }
-    home: {
-      components: {
-        clashInfo: {
-          fields: {
-            coreVersion: string
-            mixedPort: string
-            rulesCount: string
-            systemProxyAddress: string
-            uptime: string
-          }
-          title: string
-        }
-        clashMode: {
-          descriptions: {
-            direct: string
-            global: string
-            rule: string
-          }
-          errors: {
-            communication: string
-          }
-          labels: {
-            direct: string
-            global: string
-            rule: string
-          }
-        }
-        currentProxy: {
-          actions: {
-            refreshDelay: string
-          }
-          labels: {
-            directMode: string
-            globalMode: string
-            group: string
-            noActiveNode: string
-            proxy: string
-          }
-          status: {
-            error: string
-            latencyExcellent: string
-            latencyGood: string
-            latencyHigh: string
-            latencyMedium: string
-            noProxyNode: string
-            testing: string
-            timeout: string
-            uninitialized: string
-            untested: string
-          }
-          title: string
-        }
-        ipInfo: {
-          errors: {
-            load: string
-            loadWithDetails: string
-            noServices: string
-          }
-          labels: {
-            asn: string
-            autoRefresh: string
-            ip: string
-            isp: string
-            location: string
-            org: string
-            timezone: string
-            unknown: string
-          }
-          title: string
-        }
-        proxyTun: {
-          status: {
-            systemProxyDisabled: string
-            systemProxyEnabled: string
-            tunModeDisabled: string
-            tunModeEnabled: string
-            tunModeServiceRequired: string
-          }
-          tooltips: {
-            systemProxy: string
-            tunMode: string
-          }
-        }
-        systemInfo: {
-          actions: {
-            settings: string
-          }
-          badges: {
-            adminMode: string
-            adminServiceMode: string
-            notRunning: string
-            serviceMode: string
-            sidecarMode: string
-          }
-          fields: {
-            autoLaunch: string
-            lastCheckUpdate: string
-            osInfo: string
-            runningMode: string
-            vergeVersion: string
-          }
-          title: string
-        }
-        tests: {
-          title: string
-        }
-        traffic: {
-          chartStyles: {
-            linear: string
-            smooth: string
-          }
-          diagnostics: string
-          legends: {
-            download: string
-            upload: string
-          }
-          metrics: {
-            activeConnections: string
-            downloadSpeed: string
-            memoryUsage: string
-            uploadSpeed: string
-          }
-          patterns: {
-            minutes: string
-          }
-          unknownTime: string
-        }
-      }
-      page: {
-        cards: {
-          networkSettings: string
-          proxyMode: string
-          trafficStats: string
-        }
-        settings: {
-          cards: {
-            clashInfo: string
-            currentProxy: string
-            ip: string
-            network: string
-            profile: string
-            proxyMode: string
-            systemInfo: string
-            tests: string
-            traffic: string
-          }
-          title: string
-        }
-        title: string
-        tooltips: {
-          lightweightMode: string
-          manual: string
-          settings: string
-        }
-      }
-    }
     layout: {
       components: {
         navigation: {
@@ -252,15 +62,6 @@ export interface TranslationResources {
           quitCoreStopFailed: string
           restartCoreStopFailed: string
         }
-      }
-    }
-    logs: {
-      actions: {
-        showAscending: string
-        showDescending: string
-      }
-      page: {
-        title: string
       }
     }
     profiles: {
@@ -606,88 +407,6 @@ export interface TranslationResources {
         }
       }
     }
-    rules: {
-      feedback: {
-        notifications: {
-          provider: {
-            allUpdated: string
-            genericError: string
-            none: string
-            updateFailed: string
-            updateSuccess: string
-          }
-        }
-      }
-      modals: {
-        editor: {
-          form: {
-            actions: {
-              appendRule: string
-              prependRule: string
-            }
-            labels: {
-              content: string
-              proxyPolicy: string
-              type: string
-            }
-            toggles: {
-              noResolve: string
-            }
-            validation: {
-              conditionRequired: string
-              invalidRule: string
-            }
-          }
-          ruleTypes: {
-            AND: string
-            DOMAIN: string
-            'DOMAIN-KEYWORD': string
-            'DOMAIN-REGEX': string
-            'DOMAIN-SUFFIX': string
-            DSCP: string
-            'DST-PORT': string
-            GEOIP: string
-            GEOSITE: string
-            'IN-NAME': string
-            'IN-PORT': string
-            'IN-TYPE': string
-            'IN-USER': string
-            'IP-ASN': string
-            'IP-CIDR': string
-            'IP-CIDR6': string
-            'IP-SUFFIX': string
-            MATCH: string
-            NETWORK: string
-            NOT: string
-            OR: string
-            'PROCESS-NAME': string
-            'PROCESS-NAME-REGEX': string
-            'PROCESS-PATH': string
-            'PROCESS-PATH-REGEX': string
-            'RULE-SET': string
-            'SRC-GEOIP': string
-            'SRC-IP-ASN': string
-            'SRC-IP-CIDR': string
-            'SRC-IP-SUFFIX': string
-            'SRC-PORT': string
-            'SUB-RULE': string
-            UID: string
-          }
-          title: string
-        }
-      }
-      page: {
-        provider: {
-          actions: {
-            update: string
-            updateAll: string
-          }
-          dialogTitle: string
-          trigger: string
-        }
-        title: string
-      }
-    }
     settings: {
       autoSwitch: {
         description: string
@@ -880,6 +599,67 @@ export interface TranslationResources {
             withClashProxySuccess: string
           }
         }
+      }
+      minimal: {
+        activationFailed: string
+        active: string
+        appearance: string
+        autoOff: string
+        autoOn: string
+        backup: string
+        busy: string
+        closeConnections: string
+        coreReady: string
+        coreStopped: string
+        createBackup: string
+        currentNode: string
+        darkTheme: string
+        delete: string
+        deleteHint: string
+        deleteSubscription: string
+        direct: string
+        expires: string
+        exportBackup: string
+        global: string
+        group: string
+        import: string
+        importBackup: string
+        language: string
+        latencySettings: string
+        lightTheme: string
+        lightweight: string
+        mode: string
+        navigation: string
+        nodes: string
+        noMatches: string
+        noNodes: string
+        noSelection: string
+        noSubscription: string
+        notUpdated: string
+        openLogs: string
+        ports: string
+        preferences: string
+        proxyTitle: string
+        readError: string
+        refresh: string
+        restartCore: string
+        restoreBackup: string
+        restoreHint: string
+        rule: string
+        searchNodes: string
+        settingsHint: string
+        settingsTitle: string
+        subscriptionsHint: string
+        subscriptionsTitle: string
+        subscriptionUrl: string
+        systemTheme: string
+        testGroup: string
+        testNode: string
+        testTimeout: string
+        testUrl: string
+        timeout: string
+        unavailable: string
+        use: string
       }
       modals: {
         backup: {
@@ -1560,66 +1340,6 @@ export interface TranslationResources {
       window: {
         maximize: string
         minimize: string
-      }
-    }
-    tests: {
-      components: {
-        item: {
-          actions: {
-            test: string
-          }
-        }
-      }
-      modals: {
-        test: {
-          errors: {
-            invalidSvg: string
-            nameRequired: string
-            saveFailed: string
-            uidMissing: string
-            urlRequired: string
-          }
-          fields: {
-            url: string
-          }
-          title: {
-            create: string
-            edit: string
-          }
-        }
-      }
-      page: {
-        actions: {
-          testAll: string
-        }
-        title: string
-      }
-      statuses: {
-        test: {
-          completed: string
-          disallowedIsp: string
-          failed: string
-          failedNetwork: string
-          no: string
-          noDisney: string
-          originalsOnly: string
-          pending: string
-          unsupportedRegion: string
-          yes: string
-        }
-      }
-      unlock: {
-        page: {
-          actions: {
-            testing: string
-          }
-          empty: string
-          messages: {
-            detectionFailedWithName: string
-            detectionTimeout: string
-          }
-          title: string
-        }
       }
     }
   }

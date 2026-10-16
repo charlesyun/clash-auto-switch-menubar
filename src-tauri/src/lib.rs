@@ -167,8 +167,6 @@ mod app_init {
             cmd::run_auto_switch,
             cmd::get_runtime_yaml,
             cmd::get_runtime_logs,
-            cmd::get_runtime_proxy_chain_config,
-            cmd::update_proxy_chain_config_in_runtime,
             cmd::invoke_uwp_tool,
             cmd::copy_clash_env,
             cmd::sync_tray_proxy_selection,
@@ -214,14 +212,6 @@ mod app_init {
             cmd::restore_local_backup,
             cmd::import_local_backup,
             cmd::export_local_backup,
-            cmd::create_webdav_backup,
-            cmd::save_webdav_config,
-            cmd::list_webdav_backup,
-            cmd::delete_webdav_backup,
-            cmd::restore_webdav_backup,
-            cmd::get_unlock_items,
-            cmd::check_media_unlock,
-            cmd::check_media_unlock_item,
         ]
     }
 }

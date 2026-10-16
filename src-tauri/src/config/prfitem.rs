@@ -11,10 +11,8 @@ use serde::{Deserialize, Serialize};
 use serde_yaml_ng::Mapping;
 use smartstring::alias::String;
 use std::time::Duration;
-use tokio::fs;
-// TODO, use other re-export
-use reqwest_dav::re_exports::url::form_urlencoded;
 use tauri::Url;
+use tokio::fs;
 
 pub(super) fn normalize_profile_home_url(raw: &str) -> Option<String> {
     let url = Url::parse(raw.trim()).ok()?;
@@ -556,10 +554,37 @@ fn fix_dirty_url(input: &str) -> Result<Url> {
         if let Some((clean_path, dirty_params)) = path.split_once('&') {
             url.set_path(clean_path);
 
-            url.query_pairs_mut()
-                .extend_pairs(form_urlencoded::parse(dirty_params.as_bytes()));
+            let mut parameters = Url::parse("https://localhost/")?;
+            parameters.set_query(Some(dirty_params));
+            url.query_pairs_mut().extend_pairs(parameters.query_pairs());
         }
     }
 
     Ok(url)
+}
+
+#[cfg(test)]
+mod minimal_url_tests {
+    use super::fix_dirty_url;
+
+    #[test]
+    fn repairs_dirty_subscription_parameters_without_losing_encoding_or_duplicates() {
+        let url = fix_dirty_url("https://example.com/feed&token=a%26b&name=hello+world&tag=one&tag=two").unwrap();
+        assert_eq!(url.path(), "/feed");
+        let pairs: Vec<_> = url
+            .query_pairs()
+            .map(|(key, value)| (key.into_owned(), value.into_owned()))
+            .collect();
+        assert_eq!(
+            pairs,
+            vec![
+                ("token".into(), "a&b".into()),
+                ("name".into(), "hello world".into()),
+                ("tag".into(), "one".into()),
+                ("tag".into(), "two".into())
+            ]
+        );
+        let valid = "https://example.com/feed?token=a%26b&tag=one";
+        assert_eq!(fix_dirty_url(valid).unwrap().as_str(), valid);
+    }
 }

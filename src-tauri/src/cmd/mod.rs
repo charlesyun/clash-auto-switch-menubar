@@ -97,7 +97,6 @@ pub mod backup;
 pub mod clash;
 pub mod lightweight;
 pub mod listener;
-pub mod media_unlock_checker;
 pub mod network;
 pub mod profile;
 pub mod proxy;
@@ -108,7 +107,6 @@ pub mod system;
 pub mod uwp;
 pub mod validate;
 pub mod verge;
-pub mod webdav;
 
 // Re-export all command functions for backwards compatibility
 pub use app::*;
@@ -116,7 +114,6 @@ pub use backup::*;
 pub use clash::*;
 pub use lightweight::*;
 pub use listener::*;
-pub use media_unlock_checker::*;
 pub use network::*;
 pub use profile::*;
 pub use proxy::*;
@@ -126,7 +123,6 @@ pub use service::*;
 pub use system::*;
 pub use uwp::*;
 pub use verge::*;
-pub use webdav::*;
 
 pub trait StringifyErr<T> {
     fn stringify_err(self) -> CmdResult<T>;
