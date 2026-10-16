@@ -15,17 +15,27 @@
 .the_titlebar { height: 32px; display: flex; justify-content: flex-end; position: relative; }
 .the_titlebar-drag-region { flex: 1; -webkit-app-region: drag; }
 .essential-card { background: var(--surface-color); border: 1px solid var(--divider-color); border-radius: 10px; overflow: hidden; }
-.proxy-overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .8fr); gap: 16px; align-items: stretch; }
-.proxy-status { padding: 22px; display: flex; flex-direction: column; justify-content: space-between; gap: 24px; }
-.proxy-switches { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; border-top: 1px solid var(--divider-color); padding-top: 12px; }
-.auto-switch-controls { padding: 20px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }
-.auto-switch-controls .auto-actions { margin-top: 16px; }
-.auto-switch-controls .auto-timing { margin-top: auto; padding-top: 16px; }
+.proxy-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.proxy-status { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.proxy-switches { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; border-top: 1px solid var(--divider-color); padding-top: 12px; }
+.proxy-switches > div { min-width: 0; box-sizing: border-box; }
+.proxy-auto-switch .auto-switch-controls { padding: 18px 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 24px; align-items: center; box-sizing: border-box;
+  > * { min-width: 0; grid-column: 1 / -1; }
+  > .MuiTypography-root { grid-column: 1; margin: 0; }
+  .auto-actions { grid-column: 2; grid-row: 1 / span 2; margin: 0; justify-content: flex-end; }
+  .auto-timing { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--divider-color); }
+}
 .settings-sections { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .settings-sections > .settings-intro, .settings-sections > .settings-footer { grid-column: 1 / -1; }
 .profile-row { border-left: 3px solid transparent; }
 .profile-row[data-active='true'] { border-left-color: var(--primary-main); }
 .node-row { transition: background-color 100ms ease; &:hover { background: color-mix(in srgb, var(--primary-main) 4%, var(--surface-color)); } }
-@media (max-width: 960px) { .proxy-overview, .settings-sections { grid-template-columns: minmax(0, 1fr); } .auto-switch-controls .auto-timing { margin-top: 0; } }
+@media (max-width: 960px) { .settings-sections { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .proxy-auto-switch .auto-switch-controls { grid-template-columns: minmax(0, 1fr);
+    .auto-actions { grid-column: 1; grid-row: auto; justify-content: flex-start; margin-top: 6px; }
+    .auto-timing { flex-direction: column; gap: 2px; }
+  }
+}
 @media (max-width: 680px) { .layout .layout-content__left { width: 124px; flex-basis: 124px; padding: 24px 8px 14px; } .layout .app-brand { gap: 5px; padding-inline: 0; } .layout .app-brand > p { font-size: 11px; } .proxy-switches { grid-template-columns: 1fr; gap: 4px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }

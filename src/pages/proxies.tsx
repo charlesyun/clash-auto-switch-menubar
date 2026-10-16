@@ -126,7 +126,7 @@ const ProxyPage = () => {
               />
             </div>
           </Box>
-          <Box className="essential-card">
+          <Box className="essential-card proxy-auto-switch">
             <SettingAutoSwitch mode="controls" />
           </Box>
         </div>
